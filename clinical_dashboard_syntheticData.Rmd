@@ -1,0 +1,120 @@
+---
+title: "Create synthetic data for clinical dashboard"
+author: "dECMT"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+require(dplyr)
+# rm(list=ls())
+```
+
+
+```{r global parameters}
+# datetime_format <- "%Y-%m-%d %H:%M:%S"
+dateformat <- "%Y-%m-%d"
+timeformat <- "%H:%M:%S"
+number_synthetic_patients <- 100
+
+```
+
+```{r synthetic demographics}
+
+demographics_synth <- data.frame(SUBJECT_ID	= character(0),
+                                 VARIABLE_NAME	= character(0),
+                                 VARIABLE_VALUE = character(0), 
+                                 stringsAsFactors=FALSE)
+
+
+
+
+
+
+for(i in 1:number_synthetic_patients) {
+  # generate patient ID
+  subject_id <- paste0("patient_", i)
+  # generate dob
+  value <- sample(seq(as.Date('1945/01/01'), as.Date('2000/01/01'), by="day"), 1)
+  demographics_synth <- demographics_synth %>%
+    add_row(
+      SUBJECT_ID = subject_id, 
+      VARIABLE_NAME = "DOB", 
+      VARIABLE_VALUE = as.character(value)
+    )
+  # generate gender
+    value <- sample(c("MALE", "FEMALE"), 1)
+    demographics_synth <- demographics_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        VARIABLE_NAME = "GENDER", 
+        VARIABLE_VALUE = as.character(value)
+      )
+  # generate ethnic group
+    value <- sample(c("A", "B", "C"), 1)
+    demographics_synth <- demographics_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        VARIABLE_NAME = "ETHNIC_GROUP", 
+        VARIABLE_VALUE = as.character(value)
+      )    
+  # generate smoking status
+    value <- sample(c("Never smoked", "Smoker", "Former smoker", NA), 1)
+    demographics_synth <- demographics_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        VARIABLE_NAME = "SMOKING", 
+        VARIABLE_VALUE = as.character(value)
+      )    
+  # generate height
+    value <- round(rnorm(n=1, mean=170, sd=15), digits = 0)
+    demographics_synth <- demographics_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        VARIABLE_NAME = "HEIGHT", 
+        VARIABLE_VALUE = as.character(value)
+      )   
+  # generate weight
+    value <- round(rnorm(n=1, mean=70, sd=5), digits = 0)
+    demographics_synth <- demographics_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        VARIABLE_NAME = "WEIGHT", 
+        VARIABLE_VALUE = as.character(value)
+      ) 
+  
+}  
+  
+  
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r write synthetic data to csv}
+
+write.csv(x=demographics_synth, file = "DEMOGRAPHICS.csv", row.names = FALSE)
+# write.csv(x=events_synth, file = "REACT_Events.csv", row.names = FALSE)
+# write.csv(x=symptomOnsetDate_synth, file = "REACT_symptomOnsetDate_20200909.csv", row.names = FALSE)
+# write.csv(x=Vitalsigns_Numeric_synth, file = "REACT_Vitalsigns_Numeric.csv", row.names = FALSE)
+# write.csv(x=Vitalsigns_Cat_synth, file = "REACT_Vitalsigns_Categorical.csv", row.names = FALSE)
+# write.csv(x=labresults_synth, file = "REACT_LabResults.csv", row.names = FALSE)
+
+
+```
