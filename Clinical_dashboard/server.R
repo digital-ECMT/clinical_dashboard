@@ -1,31 +1,17 @@
----
-title: "Clinical dashboard"
-author: "dECMT"
-date: "`r Sys.Date()`"
-output: 
-  flexdashboard::flex_dashboard:
-    orientation: rows
-runtime: shiny
----
+#
+# This is the server logic of a Shiny web application. You can run the
+# application by clicking 'Run App' above.
+#
+# Find out more about building applications with Shiny here:
+#
+#    http://shiny.rstudio.com/
+#
 
-```{r setup, include=FALSE}
-require(flexdashboard)
+library(shiny)
 require(dplyr)
 require(tidyr)
 require(kableExtra)
-require(stringr)
-#require(DT)
-#require(kableExtra)
-#require(cgdsr)
-#require(formattable)
-require(ggplot2)
 require(reshape2)
-require(survival)
-#require(survminer)
-require(ggfortify)
-require(gganimate)
-require(av)
-require(shinyWidgets)
 require(lubridate)
 
 
@@ -51,10 +37,7 @@ dECMTpalette <- c(rgb(red=0, green=137, blue=174, maxColorValue = 255),
                   rgb(red=35, green=99, blue=32, maxColorValue = 255))
 
 
-```
-  
-  
-```{r read and process demographics, warning=FALSE}
+
 demographics <- read.csv(file = paste0(getwd(), "/DEMOGRAPHICS.csv"), stringsAsFactors = FALSE, header = TRUE)
 
 ## drop any rows with missing values
@@ -84,7 +67,7 @@ demographics_wide$DOB <- lubridate::ymd(demographics_wide$DOB)
 for(i in 2:ncol(demographics_wide)) {
   column_name = names(demographics_wide)[i]
   column_type = unique(demographics$VARIABLE_TYPE[demographics$VARIABLE_NAME == column_name])
-
+  
   if(column_type == "DATE") {
     demographics_wide[ , i] <- lubridate::ymd(demographics_wide[ , i])
     next
@@ -95,61 +78,34 @@ for(i in 2:ncol(demographics_wide)) {
   }
   
   else {demographics_wide[ , i] <- factor(demographics_wide[ , i])
-    next}
+  next}
 }
 
 
-```
-   
-   
-   
-<!-- Inputs {.sidebar} -->
-<!-- ----------------------------------------------------------------------- -->
-
-<!-- **POPULATION FILTERS**   -->
-<!-- (selected filters will be applied to all charts).   -->
-
-
-<!-- ```{r specify sidebar filters} -->
-
-<!-- demographic_variables <- unique(demographics$VARIABLE_NAME) -->
-
-<!-- selectInput(inputId = "demographic_vars", label="Demographics:", choices = demographic_variables, selected = NULL, multiple = TRUE,  selectize = TRUE, width = NULL, size = NULL) -->
 
 
 
-<!-- # fluidRow(selectInput(inputId = "demographic_vars", label="Demographics:", choices = demographic_variables, selected = NULL, multiple = TRUE,  selectize = TRUE, width = NULL, size = NULL),  -->
-<!-- #          selectInput(inputId = "demographic_vars", label="Demographics:", choices = demographic_variables, selected = NULL, multiple = TRUE,  selectize = TRUE, width = NULL, size = NULL)) -->
-
-<!-- fluidRow(column(6,selectInput("COLUMN", "Filter By:", choices = demographic_variables)), -->
-<!--                  column(6,selectInput("COLUMN", "Include:", choices = demographic_variables) -->
-<!--                         ) -->
-<!-- ) -->
-<!-- ```   -->
-  
-Row {.tabset}
------------------------------------------------------------------------  
-   
-### Population  
-  
-```{r reactive demographics table}
-
-## render table with filters
-DT::renderDT(demographics_wide,
-                                 filter = "top"
-        )
-
-renderPrint({
-  cat("some text")
+shinyServer(function(input, output) {
   
   
-})
-```
+  ## render table with filters
+  output$demographicsTable <- DT::renderDT(demographics_wide,
+               filter = "top", server = TRUE)
+    
+    
+  })
 
-   
-   
-   
-   
-   
-   
-   
+    # output$distPlot <- renderPlot({
+    # 
+    #     # generate bins based on input$bins from ui.R
+    #     x    <- faithful[, 2]
+    #     bins <- seq(min(x), max(x), length.out = input$bins + 1)
+    # 
+    #     # draw the histogram with the specified number of bins
+    #     hist(x, breaks = bins, col = 'darkgray', border = 'white',
+    #          xlab = 'Waiting time to next eruption (in mins)',
+    #          main = 'Histogram of waiting times')
+    # 
+    # })
+
+# })
