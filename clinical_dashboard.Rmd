@@ -132,18 +132,38 @@ Row {.tabset}
    
 ### Population  
   
+
+
 ```{r reactive demographics table}
 
-## render table with filters
-DT::renderDT(demographics_wide,
-                                 filter = "top"
+# create table with filters
+output$populationTable = DT::renderDT(demographics_wide,
+             filter = "top",
+             options = list(pageLength = 5, autoWidth = TRUE)
         )
 
-renderPrint({
-  cat("some text")
-  
-  
+
+# render table
+DT::dataTableOutput('populationTable')
+
+# Reactive function to which rows are selected
+sel <- reactive({ 
+    input$populationTable_rows_all
 })
+
+# reactive function to hold IDs of patients in filtered list
+selected_patients <- reactive({
+  indices <- input$populationTable_rows_all
+  subject_ids <- demographics_wide$SUBJECT_ID[indices]
+  print(subject_ids)
+  return(subject_ids)
+})
+renderText(selected_patients())
+
+
+
+
+  
 ```
 
    
