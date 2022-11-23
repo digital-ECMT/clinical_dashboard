@@ -147,12 +147,30 @@ for(i in 2:ncol(events_wide)) {
 
 ```
   
-
 ```{r join demographics_wide to events_wide}
 demographics_wide <- merge(x=demographics_wide, by.x = "SUBJECT_ID", all.x = TRUE, y=events_wide, by.y = "SUBJECT_ID", all.y = FALSE)
 
 ```
 
+   
+```{r read and process measurements, warning=FALSE}
+measurements <- read.csv(file = paste0(getwd(), "/MEASUREMENTS.csv"), stringsAsFactors = FALSE, header = TRUE)
+
+## drop any rows with missing values
+measurements <- measurements[complete.cases(measurements), ]
+
+## drop any redundant rows
+measurements <- unique(measurements)
+
+## convert MEASUREMENT_DATETIME to datetime format
+measurements$MEASUREMENT_DATETIME <- lubridate::as_datetime(measurements$MEASUREMENT_DATETIME)
+
+ 
+
+
+
+```
+  
   
   
 Row {.tabset}

@@ -165,6 +165,56 @@ for(i in 1:length(subject_ids)) {
 
 ```
 
+```{r synthetic measurements}
+measurements_synth <- data.frame(SUBJECT_ID = character(0),
+                           MEASUREMENT_NAME = character(0),
+                           MEASUREMENT_DATETIME = character(0),
+                           MEASUREMENT_VALUE = character(0),
+                           UNIT = character(0),
+                           stringsAsFactors=FALSE)
+
+
+for(i in 1:length(subject_ids)) {
+  # generate patient ID
+  subject_id <- subject_ids[i]
+  # get datetime of first event for this patient
+  earliest_datetime <- min(events$EVENT_DATETIME[events$SUBJECT_ID == subject_id])
+  # get datetime of last event for this patient
+  latest_datetime <- max(events$EVENT_DATETIME[events$SUBJECT_ID == subject_id])
+  # get date range
+  inpatient_dates <- seq(from = earliest_datetime,to = latest_datetime,by = "day")
+  for(j in 1:length(inpatient_dates)) {
+    datetime <- inpatient_dates[j]
+    # specify measurement
+    measurement <- "UREA"
+    # specify unit
+    unit <- "mmol/L"
+    # generate a value
+    value <- round(rnorm(n=1, mean = 8, sd = 1), digits = 1)
+    measurements_synth <- measurements_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        MEASUREMENT_NAME = measurement, 
+        MEASUREMENT_DATETIME = as.character(datetime),
+        MEASUREMENT_VALUE = as.character(value), 
+        UNIT = unit
+      )
+    
+  }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+}
+
+
+
+```
 
 
 
@@ -185,7 +235,7 @@ for(i in 1:length(subject_ids)) {
 
 write.csv(x=demographics_synth, file = "DEMOGRAPHICS.csv", row.names = FALSE)
 write.csv(x=events_synth, file = "EVENTS.csv", row.names = FALSE)
-# write.csv(x=symptomOnsetDate_synth, file = "REACT_symptomOnsetDate_20200909.csv", row.names = FALSE)
+write.csv(x=measurements_synth, file = "MEASUREMENTS.csv", row.names = FALSE)
 # write.csv(x=Vitalsigns_Numeric_synth, file = "REACT_Vitalsigns_Numeric.csv", row.names = FALSE)
 # write.csv(x=Vitalsigns_Cat_synth, file = "REACT_Vitalsigns_Categorical.csv", row.names = FALSE)
 # write.csv(x=labresults_synth, file = "REACT_LabResults.csv", row.names = FALSE)
