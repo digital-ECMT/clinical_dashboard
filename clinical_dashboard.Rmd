@@ -55,7 +55,7 @@ dECMTpalette <- c(rgb(red=0, green=137, blue=174, maxColorValue = 255),
   
   
 ```{r read and process demographics, warning=FALSE}
-demographics <- read.csv(file = paste0(getwd(), "/DEMOGRAPHICS.csv"), stringsAsFactors = FALSE, header = TRUE)
+demographics <- read.csv(file = paste0(getwd(), "/DEMOGRAPHICS.csv"), stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
 
 ## drop any rows with missing values
 demographics <- demographics[complete.cases(demographics), ]
@@ -102,7 +102,7 @@ for(i in 2:ncol(demographics_wide)) {
 ```
    
 ```{r read and process events, warning=FALSE}
-events <- read.csv(file = paste0(getwd(), "/EVENTS.csv"), stringsAsFactors = FALSE, header = TRUE)
+events <- read.csv(file = paste0(getwd(), "/EVENTS.csv"), stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
 
 ## drop any rows with missing values
 events <- events[complete.cases(events), ]
@@ -154,10 +154,10 @@ demographics_wide <- merge(x=demographics_wide, by.x = "SUBJECT_ID", all.x = TRU
 
    
 ```{r read and process measurements, warning=FALSE}
-measurements <- read.csv(file = paste0(getwd(), "/MEASUREMENTS.csv"), stringsAsFactors = FALSE, header = TRUE)
+measurements <- read.csv(file = paste0(getwd(), "/MEASUREMENTS.csv"), stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
 
 ## drop any rows with missing values
-measurements <- measurements[complete.cases(measurements), ]
+measurements <- measurements[!is.na(measurements$MEASUREMENT_VALUE), ]
 
 ## drop any redundant rows
 measurements <- unique(measurements)
@@ -165,7 +165,33 @@ measurements <- unique(measurements)
 ## convert MEASUREMENT_DATETIME to datetime format
 measurements$MEASUREMENT_DATETIME <- lubridate::as_datetime(measurements$MEASUREMENT_DATETIME)
 
- 
+measurements$VARIABLE_TYPE <- NA
+for(i in 1:length(unique(measurements$MEASUREMENT_NAME))) {
+  measurement_name <- unique(measurements$MEASUREMENT_NAME)[i]
+  values <- unique(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME == measurement_name])
+  ## test for logical first, since 0 and 1 can be numeric, but likely to be logical if no other numbers
+  if(length(setdiff(values, c(0,1)))==0) {
+    measurements$VARIABLE_TYPE[measurements$MEASUREMENT_NAME == measurement_name] <- "LOGICAL"
+    next
+  }
+  if(!anyNA(as.logical(values))) {
+    measurements$VARIABLE_TYPE[measurements$MEASUREMENT_NAME == measurement_name] <- "LOGICAL"
+    next
+  }
+  # if(!anyNA(as.logical(as.numeric(values)))) {
+  #   measurements$VARIABLE_TYPE[measurements$MEASUREMENT_NAME == measurement_name] <- "LOGICAL"
+  #   next
+  # }
+  ## test for numeric
+  if(!anyNA(as.numeric(values))) {
+    measurements$VARIABLE_TYPE[measurements$MEASUREMENT_NAME == measurement_name] <- "NUMERIC"
+    next
+  } else {
+    ## else assume type is character
+    measurements$VARIABLE_TYPE[measurements$MEASUREMENT_NAME == measurement_name] <- "CHARACTER"
+  }
+  
+}
 
 
 
@@ -212,6 +238,127 @@ renderText(selected_patients())
   
 ```
 
+### Lab tests  
+  
+```{r create labtests heatmap}
+
+# make palette a named vector, with names matching factor levels, in order to control which color gets matched to what
+pal <- c("HIGH" = "red","NORMAL" = "green", "LOW" = "blue")
+
+## create a reactive slider that will amend min, max, range based on selected parameter
+output$normal_range_slider <- renderUI({
+   sliderInput("normal_range", 
+               label = "Normal range:", 
+               min = min(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME=="UREA"])),
+               max = max(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME=="UREA"])),
+               value = c(min(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME=="UREA"])),
+                         max(max(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME=="UREA"]))))
+   )
+
+  })
+
+## create plot
+measurements_heatmap <- reactive({
+   measurements %>%
+    dplyr::filter(MEASUREMENT_NAME == "UREA") %>%
+    ggplot(aes(x=SUBJECT_ID, y=MEASUREMENT_DATETIME, color=as.numeric(MEASUREMENT_VALUE))) +
+    geom_tile() +
+    coord_flip()
+})
+
+output$heatmap_plot <- renderPlot({
+  measurements_heatmap()
+})
+
+## display on page
+fillCol(height = 600, flex = c(NA, 1),
+  inputPanel(
+    # selectInput(inputId = "labsBaseline", label="Select x-axis:", choices = labtest.baselines, selected = labtest.baselines[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    # selectInput(inputId = "labsParameter", label="Select y-axis:", choices = labtests, selected = labtests[12], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    # selectInput(inputId = "labsStratifier", label="Select stratifier:", choices = labtest.stratifiers, selected = labtest.stratifiers[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    uiOutput("normal_range_slider") ## display the reactive slider
+
+    ),
+  plotOutput("heatmap_plot", height = "100%")
+)
+
+
+
+
+
+
+
+# ## set NEUTROPHILS as default value
+# labtest.baselines <- names(dplyr::select(LabResults_daily, -c("STUDY_ID", "PARAMETER", "LOWER_RANGE", "UPPER_RANGE", "DATE", "meanValue", "category")))
+# #selected.labtest.baseline <- labtest.baselines[1]
+# labtest.stratifiers <- c("FINAL_OUTCOME", "VENTILATED", "ADMITTED_ITU", "PRESENTATION")
+# #selected.labtest.stratifier <- labtest.stratifiers[2]
+# 
+# ## create a reactive slider that will amend min, max, range based on selected parameter
+# output$normal.range.slider <- renderUI({
+#    sliderInput("normal.range", label = "Normal range:", min = normal.ranges[normal.ranges$PARAMETER==input$labsParameter, "MIN.VALUE"], max = normal.ranges[normal.ranges$PARAMETER==input$labsParameter, "MAX.VALUE"], 
+#     value = c(normal.ranges[normal.ranges$PARAMETER==input$labsParameter, "LLN"],normal.ranges[normal.ranges$PARAMETER==input$labsParameter, "ULN"]))
+# 
+#   })
+
+
+
+# fillCol(height = 600, flex = c(NA, 1), 
+#   inputPanel(
+#     selectInput(inputId = "labsBaseline", label="Select x-axis:", choices = labtest.baselines, selected = labtest.baselines[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL), 
+#     selectInput(inputId = "labsParameter", label="Select y-axis:", choices = labtests, selected = labtests[12], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL), 
+#     selectInput(inputId = "labsStratifier", label="Select stratifier:", choices = labtest.stratifiers, selected = labtest.stratifiers[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL), 
+#     uiOutput("normal.range.slider") ## display the reactive slider
+# 
+#     ),
+#   plotOutput("labsPlot", height = "100%")
+# )
+
+
+
+   
+# reactiveLabsPlot <- reactive({
+#    labTestHM <- merge(x=reactiveDemographics(), by.x = "STUDY_ID", y=LabResults_daily, by.y = "STUDY_ID")
+#    ## specify factor order category
+#    #labTestHM$category <- factor(labTestHM$category, levels = c("LOW", "NORMAL", "HIGH"))
+#    selected.labtest.stratifier <- input$labsStratifier
+#    selectedLabs <- input$labsParameter
+#    labTestHM <- filter(labTestHM, PARAMETER==selectedLabs)
+#    
+#    # Adding limits to scale_fill_manual ensures that all the levels will appear in the legend, even if they don't all appear in the data.
+#    
+#    ## reset values for category based on selected range on slider
+#    labTestHM$category <- ifelse(labTestHM$meanValue > input$normal.range[2], "HIGH",ifelse(labTestHM$meanValue<input$normal.range[1], "LOW", "NORMAL"))
+#    
+#    
+#    
+#    ## specify factor order category
+#    labTestHM$category <- factor(labTestHM$category, levels = c("LOW", "NORMAL", "HIGH"))
+#    selected.labtest.baseline <- input$labsBaseline
+#    xvar <- labTestHM[ , selected.labtest.baseline]
+#    ggplot(data=labTestHM, aes(x=xvar, y=STUDY_ID, fill= category)) +
+#     geom_tile() +
+#     scale_fill_manual(values = pal,limits=names(pal)) +
+#     # scale_fill_identity(guide = "legend", labels = levels(droplevels(as.factor(labTestHM$category)))) +
+#     facet_grid( labTestHM[ ,selected.labtest.stratifier] ~., scales="free_y", space = "free_y") +
+#     theme(plot.title = element_text(size=12, face="bold", hjust=0.5),
+#           axis.text.y=element_blank(),
+#           panel.border = element_rect(color = "black", fill = NA, size = 0.5),
+#           strip.background = element_rect(color = "black", size = 0.5),
+#           strip.text.y =  element_text(angle=0)) +
+#     labs(title = paste0("Changes in daily mean\n", selectedLabs, " since baseline"), x=paste0(selected.labtest.baseline, ", (days)"), y = "Patient", fill = selectedLabs) +
+#       
+#     coord_cartesian(xlim = c(-7, 50))
+# })
+# 
+# # renderPlot( {
+# #     reactiveLabsPlot()
+# # })
+# output$labsPlot <- renderPlot({
+#   reactiveLabsPlot()
+# })
+
+```
    
    
    

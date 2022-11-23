@@ -178,14 +178,14 @@ for(i in 1:length(subject_ids)) {
   # generate patient ID
   subject_id <- subject_ids[i]
   # get datetime of first event for this patient
-  earliest_datetime <- min(events$EVENT_DATETIME[events$SUBJECT_ID == subject_id])
+  earliest_datetime <- min(lubridate::as_datetime(events_synth$EVENT_DATETIME[events_synth$SUBJECT_ID == subject_id]))
   # get datetime of last event for this patient
-  latest_datetime <- max(events$EVENT_DATETIME[events$SUBJECT_ID == subject_id])
+  latest_datetime <- max(lubridate::as_datetime(events_synth$EVENT_DATETIME[events_synth$SUBJECT_ID == subject_id]))
   # get date range
   inpatient_dates <- seq(from = earliest_datetime,to = latest_datetime,by = "day")
   for(j in 1:length(inpatient_dates)) {
     datetime <- inpatient_dates[j]
-    # specify measurement
+    # create measurements
     measurement <- "UREA"
     # specify unit
     unit <- "mmol/L"
@@ -199,7 +199,62 @@ for(i in 1:length(subject_ids)) {
         MEASUREMENT_VALUE = as.character(value), 
         UNIT = unit
       )
-    
+    # create measurements
+    measurement <- "HR"
+    # specify unit
+    unit <- "bpm"
+    # generate a value
+    value <- round(rnorm(n=1, mean = 70, sd = 10), digits = 1)
+    measurements_synth <- measurements_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        MEASUREMENT_NAME = measurement, 
+        MEASUREMENT_DATETIME = as.character(datetime),
+        MEASUREMENT_VALUE = as.character(value), 
+        UNIT = unit
+      )
+    # create measurements
+    measurement <- "POSITION"
+    # specify unit
+    unit <- "NA"
+    # generate a value
+    value <- sample(x=c("PRONE", "BACK", "LEFT SIDE", "RIGHT SIDE"), size = 1)
+    measurements_synth <- measurements_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        MEASUREMENT_NAME = measurement, 
+        MEASUREMENT_DATETIME = as.character(datetime),
+        MEASUREMENT_VALUE = as.character(value), 
+        UNIT = unit
+      )
+    # create measurements
+    measurement <- "VENTILATED"
+    # specify unit
+    unit <- "NA"
+    # generate a value
+    value <- sample(x=c(1, 0, NA), size = 1)
+    measurements_synth <- measurements_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        MEASUREMENT_NAME = measurement, 
+        MEASUREMENT_DATETIME = as.character(datetime),
+        MEASUREMENT_VALUE = as.character(value), 
+        UNIT = unit
+      )
+    # create measurements
+    measurement <- "AWAKE"
+    # specify unit
+    unit <- "NA"
+    # generate a value
+    value <- sample(x=c("TRUE", "FALSE", NA), size = 1)
+    measurements_synth <- measurements_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        MEASUREMENT_NAME = measurement, 
+        MEASUREMENT_DATETIME = as.character(datetime),
+        MEASUREMENT_VALUE = as.character(value), 
+        UNIT = unit
+      )
   }
   
   
