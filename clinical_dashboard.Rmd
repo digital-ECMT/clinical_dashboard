@@ -193,7 +193,8 @@ for(i in 1:length(unique(measurements$MEASUREMENT_NAME))) {
   
 }
 
-
+## get a vector of measurement names to use later
+measurement_names <- unique(measurements$MEASUREMENT_NAME)
 
 ```
   
@@ -238,7 +239,7 @@ renderText(selected_patients())
   
 ```
 
-### Lab tests  
+### Measurements heat map  
   
 ```{r create labtests heatmap}
 
@@ -260,10 +261,12 @@ output$normal_range_slider <- renderUI({
 ## create plot
 measurements_heatmap <- reactive({
    measurements %>%
-    dplyr::filter(MEASUREMENT_NAME == "UREA") %>%
-    ggplot(aes(x=SUBJECT_ID, y=MEASUREMENT_DATETIME, color=as.numeric(MEASUREMENT_VALUE))) +
+    dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
+    dplyr::filter(MEASUREMENT_NAME == input$selectedMeasurement) %>%
+    ggplot(aes(x=SUBJECT_ID, y=MEASUREMENT_DATETIME, fill=as.numeric(MEASUREMENT_VALUE))) +
     geom_tile() +
-    coord_flip()
+    coord_flip() +
+    labs(title = paste0("Changes in measurements"), x="Datetime", y = "Patient", fill = input$selectedMeasurement)
 })
 
 output$heatmap_plot <- renderPlot({
@@ -274,7 +277,7 @@ output$heatmap_plot <- renderPlot({
 fillCol(height = 600, flex = c(NA, 1),
   inputPanel(
     # selectInput(inputId = "labsBaseline", label="Select x-axis:", choices = labtest.baselines, selected = labtest.baselines[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
-    # selectInput(inputId = "labsParameter", label="Select y-axis:", choices = labtests, selected = labtests[12], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    selectInput(inputId = "selectedMeasurement", label="Select measurement:", choices = measurement_names, selected = measurement_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
     # selectInput(inputId = "labsStratifier", label="Select stratifier:", choices = labtest.stratifiers, selected = labtest.stratifiers[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
     uiOutput("normal_range_slider") ## display the reactive slider
 
