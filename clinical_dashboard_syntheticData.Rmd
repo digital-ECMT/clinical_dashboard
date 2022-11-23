@@ -200,11 +200,53 @@ for(i in 1:length(subject_ids)) {
         UNIT = unit
       )
     # create measurements
+    measurement <- "CRP"
+    # specify unit
+    unit <- "mmol/L"
+    # generate a value
+    value <- round(rnorm(n=1, mean = 45, sd = 10), digits = 1)
+    measurements_synth <- measurements_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        MEASUREMENT_NAME = measurement, 
+        MEASUREMENT_DATETIME = as.character(datetime),
+        MEASUREMENT_VALUE = as.character(value), 
+        UNIT = unit
+      )
+    # create measurements
     measurement <- "HR"
     # specify unit
     unit <- "bpm"
     # generate a value
     value <- round(rnorm(n=1, mean = 70, sd = 10), digits = 1)
+    measurements_synth <- measurements_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        MEASUREMENT_NAME = measurement, 
+        MEASUREMENT_DATETIME = as.character(datetime),
+        MEASUREMENT_VALUE = as.character(value), 
+        UNIT = unit
+      )
+    # create measurements
+    measurement <- "SYSTOLIC BP"
+    # specify unit
+    unit <- "mm Hg"
+    # generate a value
+    value <- round(rnorm(n=1, mean = 120, sd = 10), digits = 1)
+    measurements_synth <- measurements_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        MEASUREMENT_NAME = measurement, 
+        MEASUREMENT_DATETIME = as.character(datetime),
+        MEASUREMENT_VALUE = as.character(value), 
+        UNIT = unit
+      )
+    # create measurements
+    measurement <- "DIASTOLIC BP"
+    # specify unit
+    unit <- "mm Hg"
+    # generate a value
+    value <- round(rnorm(n=1, mean = 80, sd = 10), digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
         SUBJECT_ID = subject_id, 

@@ -144,6 +144,8 @@ for(i in 2:ncol(events_wide)) {
     events_wide[ , i] <- lubridate::as_date(events_wide[ , i])  ## then just keep the date
 }
 
+## store a set of event names to populate filters in UI later...
+event_names <- unique(event_order$EVENT_NAME)
 
 ```
   
@@ -198,6 +200,14 @@ measurement_names <- unique(measurements$MEASUREMENT_NAME)
 
 ```
   
+  
+```{r join measurements to demographics_wide}
+measurements <- merge(x=demographics_wide, by.x="SUBJECT_ID", all.x=FALSE, y=measurements, by.y = "SUBJECT_ID", all.y = FALSE)
+
+
+
+```
+
   
   
 Row {.tabset}
@@ -256,15 +266,43 @@ output$normal_range_slider <- renderUI({
   })
 
 ## create plot
+# measurements %>%
+#     dplyr::filter(SUBJECT_ID %in% selected_patients) %>%
+#     dplyr::filter(MEASUREMENT_NAME == "UREA") %>%
+#     ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, ADMISSION, unit="days"), fill=as.numeric(MEASUREMENT_VALUE))) +
+#     geom_tile() +
+#     coord_flip() +
+#     labs(title = paste0("Changes in measurements"), y="Time, days", x = "Patient", fill = "urea")
 measurements_heatmap <- reactive({
    measurements %>%
     dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
     dplyr::filter(MEASUREMENT_NAME == input$selectedMeasurement) %>%
-    ggplot(aes(x=SUBJECT_ID, y=MEASUREMENT_DATETIME, fill=as.numeric(MEASUREMENT_VALUE))) +
+    ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get(input$selectedBaseline), unit="days"), fill=as.numeric(MEASUREMENT_VALUE))) +
     geom_tile() +
     coord_flip() +
-    labs(title = paste0("Changes in measurements"), x="Datetime", y = "Patient", fill = input$selectedMeasurement)
+    labs(title = paste0("Changes in measurements"), x="Patient", y ="Time, days" , fill = input$selectedMeasurement)
 })
+
+
+## get this to work in order to set colour breaks... 
+# measurements %>%
+#     dplyr::filter(SUBJECT_ID %in% selected_patients) %>%
+#     dplyr::filter(MEASUREMENT_NAME == "UREA") %>%
+#     ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get("ITU"), unit="days"))) +
+#     geom_tile(aes(colour=as.numeric(MEASUREMENT_VALUE))) +
+#     coord_flip() +
+#     labs(title = paste0("Changes in measurements"), y="Time, days", x = "Patient", colour = "urea") +
+#     scale_colour_steps2(breaks = c(5,10),
+#         low = "blue",
+#         mid = "green",
+#         high = "red",
+#         midpoint = 8,
+#         space = "Lab",
+#         na.value = "grey50",
+#         guide = "coloursteps",
+#         aesthetics = "colour"
+#     )
+
 
 output$heatmap_plot <- renderPlot({
   measurements_heatmap()
@@ -273,7 +311,7 @@ output$heatmap_plot <- renderPlot({
 ## display on page
 fillCol(height = 600, flex = c(NA, 1),
   inputPanel(
-    # selectInput(inputId = "labsBaseline", label="Select x-axis:", choices = labtest.baselines, selected = labtest.baselines[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    selectInput(inputId = "selectedBaseline", label="Select baseline event:", choices = event_names, selected = event_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
     selectInput(inputId = "selectedMeasurement", label="Select measurement:", choices = measurement_names, selected = measurement_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
     # selectInput(inputId = "labsStratifier", label="Select stratifier:", choices = labtest.stratifiers, selected = labtest.stratifiers[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
     uiOutput("normal_range_slider") ## display the reactive slider
