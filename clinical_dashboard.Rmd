@@ -101,31 +101,59 @@ for(i in 2:ncol(demographics_wide)) {
 
 ```
    
-   
-   
-<!-- Inputs {.sidebar} -->
-<!-- ----------------------------------------------------------------------- -->
+```{r read and process events, warning=FALSE}
+events <- read.csv(file = paste0(getwd(), "/EVENTS.csv"), stringsAsFactors = FALSE, header = TRUE)
 
-<!-- **POPULATION FILTERS**   -->
-<!-- (selected filters will be applied to all charts).   -->
+## drop any rows with missing values
+events <- events[complete.cases(events), ]
+
+## drop any redundant rows
+events <- unique(events)
+
+## convert EVENT_DATETIME to datetime format
+events$EVENT_DATETIME <- lubridate::as_datetime(events$EVENT_DATETIME)
+
+## cast to wide format 
+# as there may be >1 of a given event type, just get the event witht the earliest datetime value
+events_wide <- events %>%
+  group_by(SUBJECT_ID, EVENT_NAME) %>%
+  arrange(EVENT_DATETIME) %>%
+  slice_head(n = 1) %>%         ## just keep first of each event type
+  arrange(SUBJECT_ID, EVENT_DATETIME) %>%       ## reorder again so when cast wide, columns are in chronological order
+  as.data.frame() 
 
 
-<!-- ```{r specify sidebar filters} -->
 
-<!-- demographic_variables <- unique(demographics$VARIABLE_NAME) -->
+## work out the factor order for different event types (so we can reorder columns later when we cast to wide)
+event_order <- events_wide %>%
+    group_by(EVENT_NAME) %>%
+    summarise(
+        mean_datetime = mean(EVENT_DATETIME)
+    ) %>%
+    arrange(mean_datetime) %>%
+    as.data.frame()
 
-<!-- selectInput(inputId = "demographic_vars", label="Demographics:", choices = demographic_variables, selected = NULL, multiple = TRUE,  selectize = TRUE, width = NULL, size = NULL) -->
+# cast wide
+events_wide <- reshape2::dcast(data = events_wide, formula = SUBJECT_ID ~ factor(EVENT_NAME, levels = event_order$EVENT_NAME), value.var = "EVENT_DATETIME")
+
+# convert the wide columns to date format
+## for simplicity in wide version, we will just use date, not datetime
+## loop through each column in demographics wide table and format according to corresponding VARIABLE_TYPE value...
+for(i in 2:ncol(events_wide)) {
+    events_wide[ , i] <- lubridate::as_datetime(events_wide[ , i])  ## convert to datetime first
+    events_wide[ , i] <- lubridate::as_date(events_wide[ , i])  ## then just keep the date
+}
 
 
+```
+  
 
-<!-- # fluidRow(selectInput(inputId = "demographic_vars", label="Demographics:", choices = demographic_variables, selected = NULL, multiple = TRUE,  selectize = TRUE, width = NULL, size = NULL),  -->
-<!-- #          selectInput(inputId = "demographic_vars", label="Demographics:", choices = demographic_variables, selected = NULL, multiple = TRUE,  selectize = TRUE, width = NULL, size = NULL)) -->
+```{r join demographics_wide to events_wide}
+demographics_wide <- merge(x=demographics_wide, by.x = "SUBJECT_ID", all.x = TRUE, y=events_wide, by.y = "SUBJECT_ID", all.y = FALSE)
 
-<!-- fluidRow(column(6,selectInput("COLUMN", "Filter By:", choices = demographic_variables)), -->
-<!--                  column(6,selectInput("COLUMN", "Include:", choices = demographic_variables) -->
-<!--                         ) -->
-<!-- ) -->
-<!-- ```   -->
+```
+
+  
   
 Row {.tabset}
 -----------------------------------------------------------------------  

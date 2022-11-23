@@ -14,7 +14,7 @@ require(dplyr)
 
 
 ```{r global parameters}
-# datetime_format <- "%Y-%m-%d %H:%M:%S"
+datetime_format <- "%Y-%m-%d %H:%M:%S"
 dateformat <- "%Y-%m-%d"
 timeformat <- "%H:%M:%S"
 number_synthetic_patients <- 100
@@ -91,6 +91,80 @@ for(i in 1:number_synthetic_patients) {
 
 ```
 
+```{r get subject IDs}
+## get subject IDs
+subject_ids <- unique(demographics_synth$SUBJECT_ID)
+```
+
+```{r synthetic events}
+
+# Create sequence of dates
+# datetime_sequence <- seq(as.POSIXct('2022/01/01'),  
+#                          as.POSIXct('2022/11/01'),
+#                          by = "10 mins")
+
+events_synth <- data.frame(SUBJECT_ID	= character(0),
+                                 EVENT_NAME	= character(0),
+                                 EVENT_DATETIME = character(0), 
+                                 stringsAsFactors=FALSE)
+
+
+for(i in 1:length(subject_ids)) {
+  # generate patient ID
+  subject_id <- subject_ids[i]
+  # generate admission events on random dates
+  datetime <- sample(x= seq(as.POSIXct('2022/01/01'),as.POSIXct('2022/02/01'),by = "10 mins"), size = 1 )
+  events_synth <- events_synth %>%
+    add_row(
+      SUBJECT_ID = subject_id, 
+      EVENT_NAME = "ADMISSION", 
+      EVENT_DATETIME = as.character(datetime)
+    )
+  # generate ITU events
+  datetime <- sample(x= seq(as.POSIXct('2022/02/01'),as.POSIXct('2022/03/01'),by = "10 mins"), size = 1 )
+  ## randomly decide not to have any ITU events
+  random <- rbinom(n=1, size=1, prob = c(0.5,0.5))
+  ## only create an event if random is 1
+  if(random == 1) {
+    events_synth <- events_synth %>%
+    add_row(
+      SUBJECT_ID = subject_id, 
+      EVENT_NAME = "ITU", 
+      EVENT_DATETIME = as.character(datetime)
+    )
+  } 
+  
+  # generate treatment start events
+  datetime <- sample(x= seq(as.POSIXct('2022/03/01'),as.POSIXct('2022/04/01'),by = "10 mins"), size = 1 )
+  events_synth <- events_synth %>%
+    add_row(
+      SUBJECT_ID = subject_id, 
+      EVENT_NAME = "TREATMENT_START", 
+      EVENT_DATETIME = as.character(datetime)
+    )
+  # generate treatment end events
+  datetime <- sample(x= seq(as.POSIXct('2022/04/01'),as.POSIXct('2022/05/01'),by = "10 mins"), size = 1 )
+  events_synth <- events_synth %>%
+    add_row(
+      SUBJECT_ID = subject_id, 
+      EVENT_NAME = "TREATMENT_END", 
+      EVENT_DATETIME = as.character(datetime)
+    )
+  # generate X ray events
+  datetime <- sample(x= seq(as.POSIXct('2022/05/01'),as.POSIXct('2022/06/01'),by = "10 mins"), size = 1 )
+  events_synth <- events_synth %>%
+    add_row(
+      SUBJECT_ID = subject_id, 
+      EVENT_NAME = "X_RAY", 
+      EVENT_DATETIME = as.character(datetime)
+    )
+  
+}  
+  
+  
+
+```
+
 
 
 
@@ -110,7 +184,7 @@ for(i in 1:number_synthetic_patients) {
 ```{r write synthetic data to csv}
 
 write.csv(x=demographics_synth, file = "DEMOGRAPHICS.csv", row.names = FALSE)
-# write.csv(x=events_synth, file = "REACT_Events.csv", row.names = FALSE)
+write.csv(x=events_synth, file = "EVENTS.csv", row.names = FALSE)
 # write.csv(x=symptomOnsetDate_synth, file = "REACT_symptomOnsetDate_20200909.csv", row.names = FALSE)
 # write.csv(x=Vitalsigns_Numeric_synth, file = "REACT_Vitalsigns_Numeric.csv", row.names = FALSE)
 # write.csv(x=Vitalsigns_Cat_synth, file = "REACT_Vitalsigns_Categorical.csv", row.names = FALSE)
