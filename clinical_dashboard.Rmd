@@ -228,13 +228,10 @@ sel <- reactive({
 selected_patients <- reactive({
   indices <- input$populationTable_rows_all
   subject_ids <- demographics_wide$SUBJECT_ID[indices]
-  print(subject_ids)
+  print(paste0("Selected patients: ", paste(subject_ids, collapse = ", ")))
   return(subject_ids)
 })
 renderText(selected_patients())
-
-
-
 
   
 ```
