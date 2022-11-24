@@ -262,13 +262,26 @@ measurements_lineplot <- reactive({
   #     guides(alpha="none") 
   
   
+  ## geom_line for each subject...
+  # measurements %>%
+  #   dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
+  #   dplyr::filter(MEASUREMENT_NAME == input$lineplotVariable) %>%
+  #   ggplot(aes(x=difftime(MEASUREMENT_DATETIME, get(input$lineplotBaseline), unit="days"), y=MEASUREMENT_VALUE, group = SUBJECT_ID, color = get("GENDER"))) +
+  #       geom_line() +
+  #       scale_color_manual(values = dECMTpalette) +
+  #       labs(title = paste0("Changes in measurements"), x="Time, days", y = input$lineplotVariable , colour = "gender")
+  
+  ## geom_ribbon per group
   measurements %>%
     dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
     dplyr::filter(MEASUREMENT_NAME == input$lineplotVariable) %>%
-    ggplot(aes(x=difftime(MEASUREMENT_DATETIME, get(input$lineplotBaseline), unit="days"), y=MEASUREMENT_VALUE, group = SUBJECT_ID, color = get("GENDER"))) +
-        geom_line() +
+    mutate(timediff = round(difftime(MEASUREMENT_DATETIME, get(input$lineplotBaseline), unit="days"), digits = 0)) %>%
+    mutate(MEASUREMENT_VALUE = as.numeric(MEASUREMENT_VALUE)) %>%
+    ggplot(aes(x=timediff, y=MEASUREMENT_VALUE, group=get("GENDER"), color = get("GENDER"))) +
+        stat_summary(geom="ribbon", fun.data = "mean_se", aes(fill=get("GENDER")), alpha=0.3, show.legend = c(color = FALSE, fill = TRUE)) +
         scale_color_manual(values = dECMTpalette) +
-        labs(title = paste0("Changes in measurements"), x="Time, days", y = input$lineplotVariable , colour = "gender")
+        labs(title = paste0("Changes in measurements"), x="Time, days", y =input$lineplotVariable , fill = "gender")
+  
 })
 
 output$lineplot <- renderPlot({
