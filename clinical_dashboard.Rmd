@@ -197,26 +197,27 @@ for(i in 1:length(unique(measurements$MEASUREMENT_NAME))) {
 
 ## get a vector of measurement names to use later
 measurement_names <- unique(measurements$MEASUREMENT_NAME)
-
+numeric_measurement_names <- unique(measurements$MEASUREMENT_NAME[measurements$VARIABLE_TYPE == "NUMERIC"])
 ```
   
   
 ```{r join measurements to demographics_wide}
 measurements <- merge(x=demographics_wide, by.x="SUBJECT_ID", all.x=FALSE, y=measurements, by.y = "SUBJECT_ID", all.y = FALSE)
 
+```
 
+```{r specify colour palette for low and high values}
+# make palette a named vector, with names matching factor levels, in order to control which color gets matched to what
+pal <- c("LOW" = "blue","NORMAL" = "green","HIGH" = "red" )
 
 ```
 
-  
   
 Row {.tabset}
 -----------------------------------------------------------------------  
    
 ### Population  
   
-
-
 ```{r reactive demographics table}
 
 # create table with filters
@@ -246,21 +247,117 @@ renderText(selected_patients())
   
 ```
 
-### Measurements heat map  
-  
-```{r create labtests heatmap}
+### Line plots  
 
-# make palette a named vector, with names matching factor levels, in order to control which color gets matched to what
-pal <- c("LOW" = "blue","NORMAL" = "green","HIGH" = "red" )
+```{r line plot}
+
+measurements_lineplot <- reactive({
+  # measurements %>%
+  #   dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
+  #   dplyr::filter(MEASUREMENT_NAME == input$lineplotVariable) %>%
+  #   ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get(input$lineplotBaseline), unit="days"))) +
+  #     geom_tile(aes(colour=as.numeric(MEASUREMENT_VALUE), alpha=0.5)) +
+  #     coord_flip() +
+  #     labs(title = paste0("Changes in measurements"), x="Patient", y ="Time, days" , colour = input$lineplotVariable) +
+  #     guides(alpha="none") 
+  
+  
+  measurements %>%
+    dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
+    dplyr::filter(MEASUREMENT_NAME == input$lineplotVariable) %>%
+    ggplot(aes(x=difftime(MEASUREMENT_DATETIME, get(input$lineplotBaseline), unit="days"), y=MEASUREMENT_VALUE, group = SUBJECT_ID, color = get("GENDER"))) +
+        geom_line() +
+        scale_color_manual(values = dECMTpalette) +
+        labs(title = paste0("Changes in measurements"), x="Time, days", y = input$lineplotVariable , colour = "gender")
+})
+
+output$lineplot <- renderPlot({
+  measurements_lineplot()
+})
+
+## display on page
+fillCol(height = 600, flex = c(NA, 1),
+  inputPanel(
+    selectInput(inputId = "lineplotBaseline", label="Select baseline event:", choices = event_names, selected = event_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    selectInput(inputId = "lineplotVariable", label="Select measurement:", choices = numeric_measurement_names, selected = numeric_measurement_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    # selectInput(inputId = "labsStratifier", label="Select stratifier:", choices = labtest.stratifiers, selected = labtest.stratifiers[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL)
+    ),
+  plotOutput("lineplot", height = "100%")
+)
+
+
+
+# fillCol(height = 600, flex = c(NA, 1), 
+#   inputPanel(
+#     selectInput(inputId = "vitalsBaseline", label="Select x-axis:", choices = vitals.baselines, selected = vitals.baselines[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+#     selectInput(inputId = "vitalsParameter", label="Select y-axis:", choices = vitalsNum_parameters, selected = vitalsNum_parameters[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+#     selectInput(inputId = "vitalsStratifier", label="Select stratifier:", choices = vitals.stratifiers, selected = vitals.stratifiers[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL)),
+#   plotOutput("vitalsPlot", height = "100%")
+# )
+# 
+# reactiveVitalsPlot <- reactive({
+#    vitalsDataframe <- merge(x=reactiveDemographics(), y=vitalsNum_wide, by.x = "STUDY_ID", by.y = "STUDY_ID")
+#    selected.vitals.baseline <- input$vitalsBaseline
+#    xvar <- vitalsDataframe[ , selected.vitals.baseline]
+#    selected.vitals.parameter <- input$vitalsParameter
+#    yvar <- vitalsDataframe[ , selected.vitals.parameter]
+#    #yvar <- vitalsDataframe[ , input$vitalsParameter]
+#    selected.vitals.stratifier <- input$vitalsStratifier
+#    groupvar <- vitalsDataframe[ ,selected.vitals.stratifier]
+#    
+#    ggplot(data=vitalsDataframe, aes(x=xvar, y=yvar, group = groupvar, color = groupvar)) +
+#       geom_line(stat = "summary", fun.y = "mean", show.legend = FALSE) +
+#         stat_summary(geom="ribbon", fun.data = "mean_se", aes(fill=groupvar), alpha=0.3, show.legend = c(color = FALSE, fill = TRUE)) +
+#         #scale_y_discrete(breaks = seq(from=0,to=100, by=10)) +
+#         #scale_x_discrete(breaks = seq(from=min(dataframe$Days_since_baseline), to=max(dataframe$Days_since_baseline), by=5)) +
+#         scale_color_manual(values = dECMTpalette) +
+#         labs(x=selected.vitals.baseline, y=paste0("Daily mean (SE) ", selected.vitals.parameter), fill = selected.vitals.stratifier, color = selected.vitals.stratifier)
+#    
+# })
+# output$vitalsPlot <- renderPlot({
+#   reactiveVitalsPlot()
+# })
+
+
+
+
+# renderPlot( {
+#     reactiveVitalsPlot()
+# })
+
+```
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Heat map  
+  
+```{r heatmap}
+
 
 ## create a reactive slider that will amend min, max, range based on selected parameter
 output$normal_range_slider <- renderUI({
    sliderInput("normal_range", 
                label = "Normal range:", 
-               min = min(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$selectedMeasurement])),
-               max = max(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$selectedMeasurement])),
-               value = c(quantile(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$selectedMeasurement]))[2],
-                         quantile(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$selectedMeasurement]))[4]
+               min = min(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$heatMapVariable])),
+               max = max(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$heatMapVariable])),
+               value = c(quantile(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$heatMapVariable]))[2],
+                         quantile(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$heatMapVariable]))[4]
                          )
    )
 })
@@ -269,13 +366,13 @@ output$normal_range_slider <- renderUI({
 measurements_heatmap <- reactive({
   measurements %>%
     dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
-    dplyr::filter(MEASUREMENT_NAME == input$selectedMeasurement) %>%
-    ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get(input$selectedBaseline), unit="days"))) +
-    geom_tile(aes(colour=as.numeric(MEASUREMENT_VALUE), alpha=0.5)) +
-    coord_flip() +
-    labs(title = paste0("Changes in measurements"), x="Patient", y ="Time, days" , colour = input$selectedMeasurement) +
-    guides(alpha="none") +
-    binned_scale(aesthetics = "color",
+    dplyr::filter(MEASUREMENT_NAME == input$heatMapVariable) %>%
+    ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get(input$heatmapBaseline), unit="days"))) +
+      geom_tile(aes(colour=as.numeric(MEASUREMENT_VALUE), alpha=0.5)) +
+      coord_flip() +
+      labs(title = paste0("Changes in measurements"), x="Patient", y ="Time, days" , colour = input$heatMapVariable) +
+      guides(alpha="none") +
+      binned_scale(aesthetics = "color",
                  scale_name = "stepsn", 
                  palette = function(x) {pal},
                  breaks = c( 0,input$normal_range[1], input$normal_range[2]),
@@ -291,8 +388,8 @@ output$heatmap_plot <- renderPlot({
 ## display on page
 fillCol(height = 600, flex = c(NA, 1),
   inputPanel(
-    selectInput(inputId = "selectedBaseline", label="Select baseline event:", choices = event_names, selected = event_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
-    selectInput(inputId = "selectedMeasurement", label="Select measurement:", choices = measurement_names, selected = measurement_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    selectInput(inputId = "heatmapBaseline", label="Select baseline event:", choices = event_names, selected = event_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    selectInput(inputId = "heatMapVariable", label="Select measurement:", choices = numeric_measurement_names, selected = numeric_measurement_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
     # selectInput(inputId = "labsStratifier", label="Select stratifier:", choices = labtest.stratifiers, selected = labtest.stratifiers[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
     uiOutput("normal_range_slider") ## display the reactive slider
 
