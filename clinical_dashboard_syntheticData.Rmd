@@ -18,7 +18,7 @@ datetime_format <- "%Y-%m-%d %H:%M:%S"
 dateformat <- "%Y-%m-%d"
 timeformat <- "%H:%M:%S"
 number_synthetic_patients <- 100
-
+today <- lubridate::as_date(Sys.Date())
 ```
 
 ```{r synthetic demographics}
@@ -42,6 +42,14 @@ for(i in 1:number_synthetic_patients) {
     add_row(
       SUBJECT_ID = subject_id, 
       VARIABLE_NAME = "DOB", 
+      VARIABLE_VALUE = as.character(value)
+    )
+  # generate cancer type
+  value <- sample(c("BREAST", "COLORECTAL", "LIVER", "BLADDER", "PANCREAS"), 1)
+  demographics_synth <- demographics_synth %>%
+    add_row(
+      SUBJECT_ID = subject_id, 
+      VARIABLE_NAME = "CANCER TYPE", 
       VARIABLE_VALUE = as.character(value)
     )
   # generate gender
@@ -112,6 +120,17 @@ events_synth <- data.frame(SUBJECT_ID	= character(0),
 for(i in 1:length(subject_ids)) {
   # generate patient ID
   subject_id <- subject_ids[i]
+  # calculate age in years
+  dob <- demographics_synth$VARIABLE_VALUE[demographics_synth$VARIABLE_NAME == "DOB" & demographics_synth$SUBJECT_ID == subject_id]
+  dob <- lubridate::as_date(dob)
+  age <- round(lubridate::time_length(difftime(today, dob), "years"), digits=0)
+  ## assign a final outcome
+  if(age >50) {
+    final_outcome <- sample(x=c("DIED", "DISCHARGED"), size=1, prob = c(0.7,0.3))
+  } else {
+    final_outcome <- sample(x=c("DIED", "DISCHARGED"), size=1, prob = c(0.3,0.7))
+  }
+  
   # generate admission events on random dates
   datetime <- sample(x= seq(as.POSIXct('2022/01/01'),as.POSIXct('2022/02/01'),by = "10 mins"), size = 1 )
   events_synth <- events_synth %>%
@@ -158,7 +177,14 @@ for(i in 1:length(subject_ids)) {
       EVENT_NAME = "X_RAY", 
       EVENT_DATETIME = as.character(datetime)
     )
-  
+  # generate outcome events
+  datetime <- sample(x= seq(as.POSIXct('2022/06/01'),as.POSIXct('2022/07/01'),by = "10 mins"), size = 1 )
+  events_synth <- events_synth %>%
+    add_row(
+      SUBJECT_ID = subject_id, 
+      EVENT_NAME = final_outcome, 
+      EVENT_DATETIME = as.character(datetime)
+    )
 }  
   
   
@@ -177,10 +203,19 @@ measurements_synth <- data.frame(SUBJECT_ID = character(0),
 for(i in 1:length(subject_ids)) {
   # generate patient ID
   subject_id <- subject_ids[i]
+  # get gender
+  gender <- demographics_synth$VARIABLE_VALUE[demographics_synth$SUBJECT_ID==subject_id & demographics_synth$VARIABLE_NAME == "GENDER" ]
   # get datetime of first event for this patient
   earliest_datetime <- min(lubridate::as_datetime(events_synth$EVENT_DATETIME[events_synth$SUBJECT_ID == subject_id]))
   # get datetime of last event for this patient
   latest_datetime <- max(lubridate::as_datetime(events_synth$EVENT_DATETIME[events_synth$SUBJECT_ID == subject_id]))
+  # get final outcome for this patient
+  final_event <- events_synth %>%
+    dplyr::filter(SUBJECT_ID == subject_id) %>%
+    dplyr::arrange(EVENT_DATETIME) %>%
+    tail(1) %>%
+    dplyr::select(EVENT_NAME)
+  
   # get date range
   inpatient_dates <- seq(from = earliest_datetime,to = latest_datetime,by = "day")
   for(j in 1:length(inpatient_dates)) {
@@ -190,7 +225,10 @@ for(i in 1:length(subject_ids)) {
     # specify unit
     unit <- "mmol/L"
     # generate a value
-    value <- round(rnorm(n=1, mean = 8, sd = 1), digits = 1)
+    value <- rnorm(n=1, mean = 8+j, sd = 1)
+    if(final_event == "DIED") { value <- value * rnorm(n=1, mean = 1.5, sd=0.1)}
+    if(gender == "MALE") {value <- value * rnorm(n=1, mean = 1.5, sd=0.1)}
+    value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
         SUBJECT_ID = subject_id, 
@@ -204,7 +242,10 @@ for(i in 1:length(subject_ids)) {
     # specify unit
     unit <- "mmol/L"
     # generate a value
-    value <- round(rnorm(n=1, mean = 45, sd = 10), digits = 1)
+    value <- rnorm(n=1, mean = 45+j, sd = 10)
+    if(final_event == "DIED") { value <- value * rnorm(n=1, mean = 1.5, sd=0.1)}
+    if(gender == "MALE") {value <- value * rnorm(n=1, mean = 1.5, sd=0.1)}
+    value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
         SUBJECT_ID = subject_id, 
@@ -218,7 +259,10 @@ for(i in 1:length(subject_ids)) {
     # specify unit
     unit <- "bpm"
     # generate a value
-    value <- round(rnorm(n=1, mean = 70, sd = 10), digits = 1)
+    value <- rnorm(n=1, mean = 70-j, sd = 10)
+    if(final_event == "DIED") { value <- value * rnorm(n=1, mean = 0.85, sd=0.1)}
+    if(gender == "MALE") {value <- value * rnorm(n=1, mean = 0.85, sd=0.1)}
+    value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
         SUBJECT_ID = subject_id, 
@@ -232,7 +276,9 @@ for(i in 1:length(subject_ids)) {
     # specify unit
     unit <- "mm Hg"
     # generate a value
-    value <- round(rnorm(n=1, mean = 120, sd = 10), digits = 1)
+    value <- rnorm(n=1, mean = 120-j, sd = 10)
+    if(final_event == "DIED") { value <- value * 1.5}
+    value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
         SUBJECT_ID = subject_id, 
@@ -246,7 +292,9 @@ for(i in 1:length(subject_ids)) {
     # specify unit
     unit <- "mm Hg"
     # generate a value
-    value <- round(rnorm(n=1, mean = 80, sd = 10), digits = 1)
+    value <- rnorm(n=1, mean = 80, sd = 10)
+    if(final_event == "DIED") { value <- value * 0.75}
+    value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
         SUBJECT_ID = subject_id, 
