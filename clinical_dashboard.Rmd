@@ -251,59 +251,39 @@ renderText(selected_patients())
 ```{r create labtests heatmap}
 
 # make palette a named vector, with names matching factor levels, in order to control which color gets matched to what
-pal <- c("HIGH" = "red","NORMAL" = "green", "LOW" = "blue")
+pal <- c("LOW" = "blue","NORMAL" = "green","HIGH" = "red" )
 
 ## create a reactive slider that will amend min, max, range based on selected parameter
 output$normal_range_slider <- renderUI({
    sliderInput("normal_range", 
                label = "Normal range:", 
-               min = min(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME=="UREA"])),
-               max = max(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME=="UREA"])),
-               value = c(min(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME=="UREA"])),
-                         max(max(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME=="UREA"]))))
+               min = min(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$selectedMeasurement])),
+               max = max(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$selectedMeasurement])),
+               value = c(quantile(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$selectedMeasurement]))[2],
+                         quantile(as.numeric(measurements$MEASUREMENT_VALUE[measurements$MEASUREMENT_NAME==input$selectedMeasurement]))[4]
+                         )
    )
-
-  })
-
-## create plot
-# measurements %>%
-#     dplyr::filter(SUBJECT_ID %in% selected_patients) %>%
-#     dplyr::filter(MEASUREMENT_NAME == "UREA") %>%
-#     ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, ADMISSION, unit="days"), fill=as.numeric(MEASUREMENT_VALUE))) +
-#     geom_tile() +
-#     coord_flip() +
-#     labs(title = paste0("Changes in measurements"), y="Time, days", x = "Patient", fill = "urea")
-measurements_heatmap <- reactive({
-   measurements %>%
-    dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
-    dplyr::filter(MEASUREMENT_NAME == input$selectedMeasurement) %>%
-    ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get(input$selectedBaseline), unit="days"), fill=as.numeric(MEASUREMENT_VALUE))) +
-    geom_tile() +
-    coord_flip() +
-    labs(title = paste0("Changes in measurements"), x="Patient", y ="Time, days" , fill = input$selectedMeasurement)
 })
 
 
-## get this to work in order to set colour breaks... 
-# measurements %>%
-#     dplyr::filter(SUBJECT_ID %in% selected_patients) %>%
-#     dplyr::filter(MEASUREMENT_NAME == "UREA") %>%
-#     ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get("ITU"), unit="days"))) +
-#     geom_tile(aes(colour=as.numeric(MEASUREMENT_VALUE))) +
-#     coord_flip() +
-#     labs(title = paste0("Changes in measurements"), y="Time, days", x = "Patient", colour = "urea") +
-#     scale_colour_steps2(breaks = c(5,10),
-#         low = "blue",
-#         mid = "green",
-#         high = "red",
-#         midpoint = 8,
-#         space = "Lab",
-#         na.value = "grey50",
-#         guide = "coloursteps",
-#         aesthetics = "colour"
-#     )
-
-
+measurements_heatmap <- reactive({
+  measurements %>%
+    dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
+    dplyr::filter(MEASUREMENT_NAME == input$selectedMeasurement) %>%
+    ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get(input$selectedBaseline), unit="days"))) +
+    geom_tile(aes(colour=as.numeric(MEASUREMENT_VALUE), alpha=0.5)) +
+    coord_flip() +
+    labs(title = paste0("Changes in measurements"), x="Patient", y ="Time, days" , colour = input$selectedMeasurement) +
+    guides(alpha="none") +
+    binned_scale(aesthetics = "color",
+                 scale_name = "stepsn", 
+                 palette = function(x) {pal},
+                 breaks = c( 0,input$normal_range[1], input$normal_range[2]),
+                 show.limits = TRUE, 
+                 guide = "colorsteps"
+    )
+})
+  
 output$heatmap_plot <- renderPlot({
   measurements_heatmap()
 })
@@ -319,82 +299,6 @@ fillCol(height = 600, flex = c(NA, 1),
     ),
   plotOutput("heatmap_plot", height = "100%")
 )
-
-
-
-
-
-
-
-# ## set NEUTROPHILS as default value
-# labtest.baselines <- names(dplyr::select(LabResults_daily, -c("STUDY_ID", "PARAMETER", "LOWER_RANGE", "UPPER_RANGE", "DATE", "meanValue", "category")))
-# #selected.labtest.baseline <- labtest.baselines[1]
-# labtest.stratifiers <- c("FINAL_OUTCOME", "VENTILATED", "ADMITTED_ITU", "PRESENTATION")
-# #selected.labtest.stratifier <- labtest.stratifiers[2]
-# 
-# ## create a reactive slider that will amend min, max, range based on selected parameter
-# output$normal.range.slider <- renderUI({
-#    sliderInput("normal.range", label = "Normal range:", min = normal.ranges[normal.ranges$PARAMETER==input$labsParameter, "MIN.VALUE"], max = normal.ranges[normal.ranges$PARAMETER==input$labsParameter, "MAX.VALUE"], 
-#     value = c(normal.ranges[normal.ranges$PARAMETER==input$labsParameter, "LLN"],normal.ranges[normal.ranges$PARAMETER==input$labsParameter, "ULN"]))
-# 
-#   })
-
-
-
-# fillCol(height = 600, flex = c(NA, 1), 
-#   inputPanel(
-#     selectInput(inputId = "labsBaseline", label="Select x-axis:", choices = labtest.baselines, selected = labtest.baselines[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL), 
-#     selectInput(inputId = "labsParameter", label="Select y-axis:", choices = labtests, selected = labtests[12], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL), 
-#     selectInput(inputId = "labsStratifier", label="Select stratifier:", choices = labtest.stratifiers, selected = labtest.stratifiers[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL), 
-#     uiOutput("normal.range.slider") ## display the reactive slider
-# 
-#     ),
-#   plotOutput("labsPlot", height = "100%")
-# )
-
-
-
-   
-# reactiveLabsPlot <- reactive({
-#    labTestHM <- merge(x=reactiveDemographics(), by.x = "STUDY_ID", y=LabResults_daily, by.y = "STUDY_ID")
-#    ## specify factor order category
-#    #labTestHM$category <- factor(labTestHM$category, levels = c("LOW", "NORMAL", "HIGH"))
-#    selected.labtest.stratifier <- input$labsStratifier
-#    selectedLabs <- input$labsParameter
-#    labTestHM <- filter(labTestHM, PARAMETER==selectedLabs)
-#    
-#    # Adding limits to scale_fill_manual ensures that all the levels will appear in the legend, even if they don't all appear in the data.
-#    
-#    ## reset values for category based on selected range on slider
-#    labTestHM$category <- ifelse(labTestHM$meanValue > input$normal.range[2], "HIGH",ifelse(labTestHM$meanValue<input$normal.range[1], "LOW", "NORMAL"))
-#    
-#    
-#    
-#    ## specify factor order category
-#    labTestHM$category <- factor(labTestHM$category, levels = c("LOW", "NORMAL", "HIGH"))
-#    selected.labtest.baseline <- input$labsBaseline
-#    xvar <- labTestHM[ , selected.labtest.baseline]
-#    ggplot(data=labTestHM, aes(x=xvar, y=STUDY_ID, fill= category)) +
-#     geom_tile() +
-#     scale_fill_manual(values = pal,limits=names(pal)) +
-#     # scale_fill_identity(guide = "legend", labels = levels(droplevels(as.factor(labTestHM$category)))) +
-#     facet_grid( labTestHM[ ,selected.labtest.stratifier] ~., scales="free_y", space = "free_y") +
-#     theme(plot.title = element_text(size=12, face="bold", hjust=0.5),
-#           axis.text.y=element_blank(),
-#           panel.border = element_rect(color = "black", fill = NA, size = 0.5),
-#           strip.background = element_rect(color = "black", size = 0.5),
-#           strip.text.y =  element_text(angle=0)) +
-#     labs(title = paste0("Changes in daily mean\n", selectedLabs, " since baseline"), x=paste0(selected.labtest.baseline, ", (days)"), y = "Patient", fill = selectedLabs) +
-#       
-#     coord_cartesian(xlim = c(-7, 50))
-# })
-# 
-# # renderPlot( {
-# #     reactiveLabsPlot()
-# # })
-# output$labsPlot <- renderPlot({
-#   reactiveLabsPlot()
-# })
 
 ```
    
