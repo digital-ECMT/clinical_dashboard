@@ -209,6 +209,19 @@ measurements <- merge(x=demographics_wide, by.x="SUBJECT_ID", all.x=FALSE, y=mea
 
 ```
 
+```{r calculate daily mean measurements}
+## calculate daily mean values for all numeric variables
+dailyMean_measurements <- measurements %>%
+    dplyr::filter(VARIABLE_TYPE == "NUMERIC") %>%
+    group_by(SUBJECT_ID, MEASUREMENT_NAME, DATE= lubridate::as_date(MEASUREMENT_DATETIME)) %>%
+    summarise(daily_mean = mean(as.numeric(MEASUREMENT_VALUE))) %>%
+    reshape2::dcast(SUBJECT_ID + DATE ~ MEASUREMENT_NAME, value.var = "daily_mean")
+
+dailyMean_measurements <- merge(x=demographics_wide, by.x="SUBJECT_ID", all.x=FALSE, y=dailyMean_measurements, by.y = "SUBJECT_ID", all.y = FALSE)
+
+```
+
+
 ```{r specify colour palette for low and high values}
 # make palette a named vector, with names matching factor levels, in order to control which color gets matched to what
 pal <- c("LOW" = "blue","NORMAL" = "green","HIGH" = "red" )
@@ -259,8 +272,8 @@ measurements_lineplot <- reactive({
   measurements %>%
     dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
     dplyr::filter(MEASUREMENT_NAME == input$lineplotVariable) %>%
-    mutate(timediff = round(difftime(MEASUREMENT_DATETIME, get(input$lineplotBaseline), unit="days"), digits = 0)) %>%
-    mutate(MEASUREMENT_VALUE = as.numeric(MEASUREMENT_VALUE)) %>%
+    dplyr::mutate(timediff = round(difftime(MEASUREMENT_DATETIME, get(input$lineplotBaseline), unit="days"), digits = 0)) %>%
+    dplyr::mutate(MEASUREMENT_VALUE = as.numeric(MEASUREMENT_VALUE)) %>%
     ggplot(aes(x=timediff, y=MEASUREMENT_VALUE, group=get(input$lineplotStratifier), color = get(input$lineplotStratifier))) +
         stat_summary(geom="ribbon", fun.data = "mean_se", aes(fill=get(input$lineplotStratifier)), alpha=0.3, show.legend = c(color = FALSE, fill = TRUE)) +
         scale_color_manual(values = dECMTpalette) +
@@ -284,7 +297,40 @@ fillCol(height = 600, flex = c(NA, 1),
 
 ```
 
-### Heat map  
+### Violin plots  
+  
+```{r violin plot}
+
+reactiveViolinPlot <- reactive({
+   demographics_wide %>%
+    dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
+    dplyr::mutate(timediff = round(difftime(time2 = get(input$violinplotFrom), time1 = get(input$violinplotTo), unit="days"), digits = 0)) %>%
+    ggplot(aes(x=get(input$violinplotStratifier), y=timediff, fill=get(input$violinplotStratifier))) +
+      geom_violin(alpha=0.3, scale = "count") +
+      geom_jitter(width = 0.1, height = 0) +
+      scale_color_manual(values = dECMTpalette) +
+      labs(title = paste0("Time from ", input$violinplotFrom, " to ", input$violinplotTo, " according to ", input$violinplotStratifier), x=input$violinplotStratifier, y="Time, days", fill = input$violinplotStratifier)
+   
+})
+
+output$violinPlot <- renderPlot({
+  reactiveViolinPlot()
+})
+
+## display on page
+fillCol(height = 600, flex = c(NA, 1),
+  inputPanel(
+    selectInput(inputId = "violinplotFrom", label="From:", choices = event_names, selected = event_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    selectInput(inputId = "violinplotTo", label="To:", choices = event_names, selected = event_names[2], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    
+    selectInput(inputId = "violinplotStratifier", label="Select stratifier:", choices = stratifier_names, selected = stratifier_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL)
+    ),  
+  plotOutput("violinPlot", height = "100%")
+)
+
+```
+
+### Heat maps  
   
 ```{r heatmap}
 
@@ -307,7 +353,7 @@ measurements_heatmap <- reactive({
     dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
     dplyr::filter(MEASUREMENT_NAME == input$heatMapVariable) %>%
     ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get(input$heatmapBaseline), unit="days"))) +
-      geom_tile(aes(colour=as.numeric(MEASUREMENT_VALUE), alpha=0.5)) +
+      geom_tile(aes(colour=as.numeric(MEASUREMENT_VALUE))) +
       coord_flip() +
       labs(x="Subject ID", y =paste0("Days since ", input$heatmapBaseline) , colour = input$heatMapVariable) +
       guides(alpha="none") +
@@ -338,7 +384,22 @@ fillCol(height = 600, flex = c(NA, 1),
 
 ```
    
-   
+### x-y plots  
+  
+```{r xy plot}
+## static plot
+dailyMean_measurements %>%
+  dplyr::mutate(day = round(difftime(time2 = get("ADMISSION"), time1 = DATE, unit="days"), digits = 0)) %>%
+  dplyr::filter(as.numeric(day) %in% (0:7)) %>%
+  ggplot(aes(x=get("UREA"), y=get("CRP"), group=get("GENDER"), color=get("GENDER"))) +
+    geom_point(alpha=0.3,size = 5) +
+    scale_color_manual(values = dECMTpalette) +
+    labs(title = "UREA vs CRP (mean per day per subject) over 7 day window after ADMISSION", x="UREA", y="CRP", fill = "GENDER", color = "GENDER")
+
+
+
+
+```
    
    
    
