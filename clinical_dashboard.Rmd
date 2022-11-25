@@ -387,17 +387,47 @@ fillCol(height = 600, flex = c(NA, 1),
 ### x-y plots  
   
 ```{r xy plot}
-## static plot
-dailyMean_measurements %>%
-  dplyr::mutate(day = round(difftime(time2 = get("ADMISSION"), time1 = DATE, unit="days"), digits = 0)) %>%
-  dplyr::filter(as.numeric(day) %in% (0:7)) %>%
-  ggplot(aes(x=get("UREA"), y=get("CRP"), group=get("GENDER"), color=get("GENDER"))) +
+
+# ## static plot
+# dailyMean_measurements %>%
+#   dplyr::mutate(day = round(difftime(time2 = get("ADMISSION"), time1 = DATE, unit="days"), digits = 0)) %>%
+#   dplyr::filter(as.numeric(day) %in% (0:7)) %>%
+#   ggplot(aes(x=get("UREA"), y=get("CRP"), group=get("GENDER"), color=get("GENDER"))) +
+#     geom_point(alpha=0.3,size = 5) +
+#     scale_color_manual(values = dECMTpalette) +
+#     labs(title = "UREA vs CRP (mean per day per subject) over 7 day window after ADMISSION", x="UREA", y="CRP", fill = "GENDER", color = "GENDER")
+
+## reactive plot
+reactiveXYPlot <- reactive({
+  dailyMean_measurements %>%
+  dplyr::mutate(day = round(difftime(time2 = get(input$xyPlot_baseline), time1 = DATE, unit="days"), digits = 0)) %>%
+  dplyr::filter(as.numeric(day) %in% (input$xyPlot_window[1]:input$xyPlot_window[2])) %>%
+  ggplot(aes(x=get(input$xyPlot_x), y=get(input$xyPlot_y), group=get(input$xyPlot_baseline), color=get(input$xyPlotStratifier))) +
     geom_point(alpha=0.3,size = 5) +
     scale_color_manual(values = dECMTpalette) +
-    labs(title = "UREA vs CRP (mean per day per subject) over 7 day window after ADMISSION", x="UREA", y="CRP", fill = "GENDER", color = "GENDER")
+    labs(title = paste0(input$xyPlot_x, " vs ", input$xyPlot_y, " (mean per day per subject) over ",input$xyPlot_window[2] ," day window after ", input$xyPlot_baseline), x=input$xyPlot_x, y=input$xyPlot_y, fill = input$xyPlotStratifier, color = input$xyPlotStratifier)
+  
+})
 
+output$XYPlot <- renderPlot({
+  reactiveXYPlot()
+})
 
-
+## display on page
+fillCol(height = 600, flex = c(NA, 1),
+  inputPanel(
+    selectInput(inputId = "xyPlot_x", label="Select x axis:", choices = numeric_measurement_names, selected = numeric_measurement_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    selectInput(inputId = "xyPlot_y", label="Select y axis:", choices = numeric_measurement_names, selected = numeric_measurement_names[2], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    selectInput(inputId = "xyPlot_baseline", label="Select baseline:", choices = event_names, selected = event_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    sliderInput("xyPlot_window", 
+               label = "Time window after baseline:", 
+               min = 0,
+               max = 30,
+               value = c(0,7)),
+    selectInput(inputId = "xyPlotStratifier", label="Select stratifier:", choices = stratifier_names, selected = stratifier_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL)
+    ),  
+  plotOutput("XYPlot", height = "100%")
+)
 
 ```
    
