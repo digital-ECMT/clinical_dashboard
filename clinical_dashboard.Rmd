@@ -263,7 +263,7 @@ renderText(selected_patients())
   
 ```
 
-### Line plots  
+### Line plot  
 
 ```{r line plot}
 
@@ -299,7 +299,7 @@ fillCol(height = 600, flex = c(NA, 1),
 
 ```
 
-### Violin plots  
+### Violin plot  
   
 ```{r violin plot}
 
@@ -332,7 +332,31 @@ fillCol(height = 600, flex = c(NA, 1),
 
 ```
 
-### Heat maps  
+### Time to event plot
+  
+```{r time to event plot}
+## static examples...
+
+# plot(ecdf(demographics_wide[,"ITU"]), cex=0)
+
+# ggplot(demographics_wide, aes(x=ITU)) +
+#     stat_ecdf(geom = "step")
+
+demographics_wide %>%
+    dplyr::mutate(day = round(difftime(time2 = get("ADMISSION"), time1 = get("DIED"), unit="days"), digits = 0)) %>%
+    ggplot(aes(x=day, group=get("GENDER"), color=get("GENDER"))) +
+    stat_ecdf(geom = "step") +
+    scale_color_manual(values = dECMTpalette) +
+    labs(title = "title", x="Days since admission", y="proportion", fill = "GENDER", color = "GENDER") +
+    expand_limits(x=0)
+
+
+```
+
+
+
+
+### Heat map  
   
 ```{r heatmap}
 
@@ -393,7 +417,7 @@ fillCol(height = 600, flex = c(NA, 1),
 
 ```
    
-### x-y plots  
+### x-y plot  
   
 ```{r xy plot}
 
