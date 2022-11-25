@@ -276,8 +276,10 @@ measurements_lineplot <- reactive({
     dplyr::mutate(MEASUREMENT_VALUE = as.numeric(MEASUREMENT_VALUE)) %>%
     ggplot(aes(x=timediff, y=MEASUREMENT_VALUE, group=get(input$lineplotStratifier), color = get(input$lineplotStratifier))) +
         stat_summary(geom="ribbon", fun.data = "mean_se", aes(fill=get(input$lineplotStratifier)), alpha=0.3, show.legend = c(color = FALSE, fill = TRUE)) +
+        geom_vline(xintercept=0) +
+        # geom_smooth(aes(group=get(input$lineplotStratifier))) +
         scale_color_manual(values = dECMTpalette) +
-        labs(x=paste0("Days since ", input$lineplotBaseline), y =input$lineplotVariable , fill = input$lineplotStratifier)
+        labs(title = paste0(input$lineplotVariable, " over time according to ", input$lineplotStratifier), x=paste0("Days since ", input$lineplotBaseline), y =input$lineplotVariable , fill = input$lineplotStratifier, color = input$lineplotStratifier)
   
 })
 
@@ -307,7 +309,7 @@ reactiveViolinPlot <- reactive({
     dplyr::mutate(timediff = round(difftime(time2 = get(input$violinplotFrom), time1 = get(input$violinplotTo), unit="days"), digits = 0)) %>%
     ggplot(aes(x=get(input$violinplotStratifier), y=timediff, fill=get(input$violinplotStratifier))) +
       geom_violin(alpha=0.3, scale = "count") +
-      geom_jitter(width = 0.1, height = 0) +
+      geom_jitter(alpha=0.5,size = 5, width = 0.1, height = 0) +
       scale_color_manual(values = dECMTpalette) +
       labs(title = paste0("Time from ", input$violinplotFrom, " to ", input$violinplotTo, " according to ", input$violinplotStratifier), x=input$violinplotStratifier, y="Time, days", fill = input$violinplotStratifier)
    
@@ -354,8 +356,9 @@ measurements_heatmap <- reactive({
     dplyr::filter(MEASUREMENT_NAME == input$heatMapVariable) %>%
     ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get(input$heatmapBaseline), unit="days"))) +
       geom_tile(aes(colour=as.numeric(MEASUREMENT_VALUE))) +
+      geom_hline(yintercept=0, color="black") +
       coord_flip() +
-      labs(x="Subject ID", y =paste0("Days since ", input$heatmapBaseline) , colour = input$heatMapVariable) +
+      labs(title = paste0(input$heatMapVariable ," versus ", input$heatmapBaseline), x="Subject ID", y =paste0("Days since ", input$heatmapBaseline) , colour = input$heatMapVariable) +
       guides(alpha="none") +
       binned_scale(aesthetics = "color",
                  scale_name = "stepsn", 
@@ -363,7 +366,13 @@ measurements_heatmap <- reactive({
                  breaks = c( 0,input$normal_range[1], input$normal_range[2]),
                  show.limits = TRUE, 
                  guide = "colorsteps"
-    )
+    ) +
+    facet_grid( get(input$heatmapStratifier) ~., scales="free_y", space = "free_y") +
+    theme(plot.title = element_text(size=12, face="bold", hjust=0.5),
+          axis.text.y=element_blank(),
+          panel.border = element_rect(color = "black", fill = NA, size = 0.5),
+          strip.background = element_rect(color = "black", size = 0.5),
+          strip.text.y =  element_text(angle=0))
 })
   
 output$heatmap_plot <- renderPlot({
@@ -375,7 +384,7 @@ fillCol(height = 600, flex = c(NA, 1),
   inputPanel(
     selectInput(inputId = "heatmapBaseline", label="Select baseline event:", choices = event_names, selected = event_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
     selectInput(inputId = "heatMapVariable", label="Select measurement:", choices = numeric_measurement_names, selected = numeric_measurement_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
-    # selectInput(inputId = "labsStratifier", label="Select stratifier:", choices = labtest.stratifiers, selected = labtest.stratifiers[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    selectInput(inputId = "heatmapStratifier", label="Select stratifier:", choices = stratifier_names, selected = stratifier_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
     uiOutput("normal_range_slider") ## display the reactive slider
 
     ),
@@ -404,6 +413,7 @@ reactiveXYPlot <- reactive({
   dplyr::filter(as.numeric(day) %in% (input$xyPlot_window[1]:input$xyPlot_window[2])) %>%
   ggplot(aes(x=get(input$xyPlot_x), y=get(input$xyPlot_y), group=get(input$xyPlot_baseline), color=get(input$xyPlotStratifier))) +
     geom_point(alpha=0.3,size = 5) +
+    # geom_smooth(aes(group=get(input$xyPlotStratifier))) +
     scale_color_manual(values = dECMTpalette) +
     labs(title = paste0(input$xyPlot_x, " vs ", input$xyPlot_y, " (mean per day per subject) over ",input$xyPlot_window[2] ," day window after ", input$xyPlot_baseline), x=input$xyPlot_x, y=input$xyPlot_y, fill = input$xyPlotStratifier, color = input$xyPlotStratifier)
   
