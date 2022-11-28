@@ -5,9 +5,9 @@
  A lightweight R Shiny app designed for exploration of clinical data.  
    
  3 files are required:  
- 1. Demographics table, tall format, with headers: SUBJECT_ID, VARIABLE_NAME, VARIABLE_VALUE  
- 2. Events table, tall format, with headers: SUBJECT_ID, EVENT_NAME, EVENT_DATETIME   
- 3. Measurements table, tall format, with headers: SUBJECT_ID, MEASUREMENT_NAME, MEASUREMENT_DATETIME, MEASUREMENT_VALUE, UNIT  
+ 1. Demographics table named DEMOGRAPHICS.csv, tall format, with headers: SUBJECT_ID, VARIABLE_NAME, VARIABLE_VALUE  
+ 2. Events table named EVENTS.csv, tall format, with headers: SUBJECT_ID, EVENT_NAME, EVENT_DATETIME   
+ 3. Measurements table named MEASUREMENTS.csv, tall format, with headers: SUBJECT_ID, MEASUREMENT_NAME, MEASUREMENT_DATETIME, MEASUREMENT_VALUE, UNIT  
 
 Datetime values must have the format: YYYY-MM-DD HH:MM:SS
 
