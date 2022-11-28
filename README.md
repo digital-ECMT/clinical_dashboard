@@ -10,3 +10,5 @@
  3. Measurements table, tall format, with headers: SUBJECT_ID, MEASUREMENT_NAME, MEASUREMENT_DATETIME, MEASUREMENT_VALUE, UNIT  
 
 Datetime values must have the format: YYYY-MM-DD HH:MM:SS
+
+Synthetic data for 100 patients, plus the script used to generate the synthetic data, are included.  
