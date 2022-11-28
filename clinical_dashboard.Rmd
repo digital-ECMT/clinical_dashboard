@@ -8,21 +8,41 @@ output:
 runtime: shiny
 ---
 
-```{r setup, include=FALSE}
-require(flexdashboard)
-require(dplyr)
-require(DT)
-require(ggplot2)
-require(reshape2)
-require(shinyWidgets)
-require(lubridate)
-require(data.table)
 
+```{r copyright notice}
+ # 
+ # This file is part of the clinical dashboard distribution (https://github.com/digital-ECMT/clinical_dashboard).
+ # Copyright (C) 2022 digital ECMT
+ # 
+ # This program is free software: you can redistribute it and/or modify  
+ # it under the terms of the GNU General Public License as published by  
+ # the Free Software Foundation, version 3 or later.
+ #
+ # This program is distributed in the hope that it will be useful, but 
+ # WITHOUT ANY WARRANTY; without even the implied warranty of 
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ # General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License 
+ # along with this program. If not, see <http://www.gnu.org/licenses/>.
+ #
+
+```
+
+```{r setup, include=FALSE}
+require(flexdashboard)    ## MIT
+require(dplyr)            ## MIT
+require(DT)               ## GPL-3
+require(ggplot2)          ## MIT
+require(reshape2)         ## MIT
+require(shinyWidgets)     ## GPL-3
+require(lubridate)        ## GPL-2|3
+# require(data.table)       ## MPL2
 
 ## clean up
 rm(list=ls())
 
-##create a custom palette based on palette used for dECMT slide template
+##create a custom palette based on dECMT branding
 dECMTpalette <- c(rgb(red=0, green=137, blue=174, maxColorValue = 255), 
                   rgb(red=208, green=134, blue=146, maxColorValue = 255),
                   rgb(red=237, green=154, blue=75, maxColorValue = 255),
@@ -40,16 +60,13 @@ dECMTpalette <- c(rgb(red=0, green=137, blue=174, maxColorValue = 255),
                   rgb(red=105, green=25, blue=122, maxColorValue = 255),
                   rgb(red=35, green=99, blue=32, maxColorValue = 255))
 
-
 ```
-  
-  
+
 ```{r read and process demographics, warning=FALSE}
 demographics_filepath <- paste0(getwd(), "/DEMOGRAPHICS.csv")
 
-# demographics <- read.csv(file = demographics_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
-demographics <- data.table::fread(file = demographics_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
-
+demographics <- read.csv(file = demographics_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+# demographics <- data.table::fread(file = demographics_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
 
 ## drop any rows with missing values
 demographics <- demographics[complete.cases(demographics), ]
@@ -67,8 +84,6 @@ demographics$VARIABLE_TYPE[!is.na(lubridate::ymd(demographics$VARIABLE_VALUE))] 
 demographics$VARIABLE_TYPE[!is.na(as.logical(demographics$VARIABLE_VALUE))] <- "LOGICAL"
 ## if none of the above, assume character
 demographics$VARIABLE_TYPE[is.na(demographics$VARIABLE_TYPE)] <- "CHARACTER"
-
-
 
 ## cast to wide format 
 demographics_wide <- reshape2::dcast(data = demographics, formula = SUBJECT_ID ~ VARIABLE_NAME, value.var = "VARIABLE_VALUE")
@@ -101,9 +116,8 @@ stratifier_names <- unique(demographics$VARIABLE_NAME[demographics$VARIABLE_TYPE
 ```{r read and process events, warning=FALSE}
 events_filepath <- paste0(getwd(), "/EVENTS.csv")
 
-# events <- read.csv(file = events_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
-events <- data.table::fread(file = events_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
-
+events <- read.csv(file = events_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+# events <- data.table::fread(file = events_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
 
 ## drop any rows with missing values
 events <- events[complete.cases(events), ]
@@ -122,8 +136,6 @@ events_wide <- events %>%
   slice_head(n = 1) %>%         ## just keep first of each event type
   arrange(SUBJECT_ID, EVENT_DATETIME) %>%       ## reorder again so when cast wide, columns are in chronological order
   as.data.frame() 
-
-
 
 ## work out the factor order for different event types (so we can reorder columns later when we cast to wide)
 event_order <- events_wide %>%
@@ -155,13 +167,11 @@ demographics_wide <- merge(x=demographics_wide, by.x = "SUBJECT_ID", all.x = TRU
 
 ```
 
-   
 ```{r read and process measurements, warning=FALSE}
 measurements_filepath <- paste0(getwd(), "/MEASUREMENTS.csv")
 
-# measurements <- read.csv(file = measurements_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
-measurements <- data.table::fread(file = measurements_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
-
+measurements <- read.csv(file = measurements_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+# measurements <- data.table::fread(file = measurements_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
 
 ## drop any rows with missing values
 measurements <- measurements[!is.na(measurements$MEASUREMENT_VALUE), ]
@@ -193,14 +203,12 @@ for(i in 1:length(unique(measurements$MEASUREMENT_NAME))) {
     ## else assume type is character
     measurements$VARIABLE_TYPE[measurements$MEASUREMENT_NAME == measurement_name] <- "CHARACTER"
   }
-  
 }
 
 ## get a vector of measurement names to use later
 measurement_names <- unique(measurements$MEASUREMENT_NAME)
 numeric_measurement_names <- unique(measurements$MEASUREMENT_NAME[measurements$VARIABLE_TYPE == "NUMERIC"])
 ```
-  
   
 ```{r join measurements to demographics_wide}
 measurements <- merge(x=demographics_wide, by.x="SUBJECT_ID", all.x=FALSE, y=measurements, by.y = "SUBJECT_ID", all.y = FALSE)
@@ -219,14 +227,12 @@ dailyMean_measurements <- merge(x=demographics_wide, by.x="SUBJECT_ID", all.x=FA
 
 ```
 
-
 ```{r specify colour palette for low and high values}
 # make palette a named vector, with names matching factor levels, in order to control which color gets matched to what
 pal <- c("LOW" = "blue","NORMAL" = "green","HIGH" = "red" )
 
 ```
 
-  
 Row {.tabset}
 -----------------------------------------------------------------------  
    
@@ -239,7 +245,6 @@ output$populationTable = DT::renderDT(demographics_wide,
              filter = "top",
              options = list(pageLength = 25, autoWidth = TRUE)
         )
-
 
 # render table
 DT::dataTableOutput('populationTable')
@@ -258,7 +263,6 @@ selected_patients <- reactive({
 })
 renderText(selected_patients())
 
-  
 ```
 
 ### Line plot  
@@ -333,30 +337,7 @@ fillCol(height = 600, flex = c(NA, 1),
 ### Time to event plot
   
 ```{r time to event plot}
-## static examples...
 
-# demographics_wide %>%
-#     dplyr::mutate(day = round(difftime(time2 = get("ADMISSION"), time1 = get("DIED"), unit="days"), digits = 0)) %>%
-#     ggplot(aes(x=day, group=get("GENDER"), color=get("GENDER"))) +
-#     stat_ecdf(geom = "step") +
-#     scale_color_manual(values = dECMTpalette) +
-#     labs(title = "title", x="Days since admission", y="proportion", fill = "GENDER", color = "GENDER") +
-#     expand_limits(x=0)
-
-## get cumulative proportion per group vs days since baseline 
-# demographics_wide %>%
-#     group_by(get("GENDER")) %>%
-#     mutate(day = round(difftime(time2 = get("ADMISSION"), time1 = get("DISCHARGED"), unit="days"), digits = 0)) %>%
-#     arrange(day) %>%
-#     mutate(discharges = cumsum(!is.na(DISCHARGED))) %>%
-#     mutate(group_total = length(unique(SUBJECT_ID))) %>%
-#     mutate(cum_prop = round(discharges/group_total, digits = 3)) %>%
-#     ggplot(aes(x=day, y=cum_prop, color=GENDER)) +
-#         geom_step() +
-#         expand_limits(x=0, y=c(0,1)) +
-#         scale_color_manual(values = dECMTpalette) +
-#         labs(title = "title", x="Days since ADMISSION", y="Proportion with DISCHARGE event", fill = "GENDER", color = "GENDER")  
-    
 reactiveTTEPlot <- reactive({
   demographics_wide %>%
     dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
@@ -391,13 +372,9 @@ fillCol(height = 600, flex = c(NA, 1),
 )
 ```
 
-
-
-
 ### Heat map  
   
 ```{r heatmap}
-
 
 ## create a reactive slider that will amend min, max, range based on selected parameter
 output$normal_range_slider <- renderUI({
@@ -482,15 +459,6 @@ fillCol(height = 600, flex = c(NA, 1),
 ### x-y plot  
   
 ```{r xy plot}
-
-# ## static plot
-# dailyMean_measurements %>%
-#   dplyr::mutate(day = round(difftime(time2 = get("ADMISSION"), time1 = DATE, unit="days"), digits = 0)) %>%
-#   dplyr::filter(as.numeric(day) %in% (0:7)) %>%
-#   ggplot(aes(x=get("UREA"), y=get("CRP"), group=get("GENDER"), color=get("GENDER"))) +
-#     geom_point(alpha=0.3,size = 5) +
-#     scale_color_manual(values = dECMTpalette) +
-#     labs(title = "UREA vs CRP (mean per day per subject) over 7 day window after ADMISSION", x="UREA", y="CRP", fill = "GENDER", color = "GENDER")
 
 ## reactive plot
 reactiveXYPlot <- reactive({

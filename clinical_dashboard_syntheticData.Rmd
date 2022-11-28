@@ -361,29 +361,10 @@ for(i in 1:length(subject_ids)) {
 
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ```{r write synthetic data to csv}
 
 write.csv(x=demographics_synth, file = "DEMOGRAPHICS.csv", row.names = FALSE)
 write.csv(x=events_synth, file = "EVENTS.csv", row.names = FALSE)
 write.csv(x=measurements_synth, file = "MEASUREMENTS.csv", row.names = FALSE)
-# write.csv(x=Vitalsigns_Numeric_synth, file = "REACT_Vitalsigns_Numeric.csv", row.names = FALSE)
-# write.csv(x=Vitalsigns_Cat_synth, file = "REACT_Vitalsigns_Categorical.csv", row.names = FALSE)
-# write.csv(x=labresults_synth, file = "REACT_LabResults.csv", row.names = FALSE)
-
 
 ```
