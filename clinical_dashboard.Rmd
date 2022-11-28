@@ -11,22 +11,12 @@ runtime: shiny
 ```{r setup, include=FALSE}
 require(flexdashboard)
 require(dplyr)
-require(tidyr)
-require(kableExtra)
-require(stringr)
-#require(DT)
-#require(kableExtra)
-#require(cgdsr)
-#require(formattable)
+require(DT)
 require(ggplot2)
 require(reshape2)
-require(survival)
-#require(survminer)
-require(ggfortify)
-require(gganimate)
-require(av)
 require(shinyWidgets)
 require(lubridate)
+require(data.table)
 
 
 ## clean up
@@ -55,7 +45,11 @@ dECMTpalette <- c(rgb(red=0, green=137, blue=174, maxColorValue = 255),
   
   
 ```{r read and process demographics, warning=FALSE}
-demographics <- read.csv(file = paste0(getwd(), "/DEMOGRAPHICS.csv"), stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+demographics_filepath <- paste0(getwd(), "/DEMOGRAPHICS.csv")
+
+# demographics <- read.csv(file = demographics_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+demographics <- data.table::fread(file = demographics_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+
 
 ## drop any rows with missing values
 demographics <- demographics[complete.cases(demographics), ]
@@ -105,7 +99,11 @@ stratifier_names <- unique(demographics$VARIABLE_NAME[demographics$VARIABLE_TYPE
 ```
    
 ```{r read and process events, warning=FALSE}
-events <- read.csv(file = paste0(getwd(), "/EVENTS.csv"), stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+events_filepath <- paste0(getwd(), "/EVENTS.csv")
+
+# events <- read.csv(file = events_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+events <- data.table::fread(file = events_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+
 
 ## drop any rows with missing values
 events <- events[complete.cases(events), ]
@@ -159,7 +157,11 @@ demographics_wide <- merge(x=demographics_wide, by.x = "SUBJECT_ID", all.x = TRU
 
    
 ```{r read and process measurements, warning=FALSE}
-measurements <- read.csv(file = paste0(getwd(), "/MEASUREMENTS.csv"), stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+measurements_filepath <- paste0(getwd(), "/MEASUREMENTS.csv")
+
+# measurements <- read.csv(file = measurements_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+measurements <- data.table::fread(file = measurements_filepath, stringsAsFactors = FALSE, header = TRUE, na.strings = "NA")
+
 
 ## drop any rows with missing values
 measurements <- measurements[!is.na(measurements$MEASUREMENT_VALUE), ]
@@ -183,10 +185,6 @@ for(i in 1:length(unique(measurements$MEASUREMENT_NAME))) {
     measurements$VARIABLE_TYPE[measurements$MEASUREMENT_NAME == measurement_name] <- "LOGICAL"
     next
   }
-  # if(!anyNA(as.logical(as.numeric(values)))) {
-  #   measurements$VARIABLE_TYPE[measurements$MEASUREMENT_NAME == measurement_name] <- "LOGICAL"
-  #   next
-  # }
   ## test for numeric
   if(!anyNA(as.numeric(values))) {
     measurements$VARIABLE_TYPE[measurements$MEASUREMENT_NAME == measurement_name] <- "NUMERIC"
@@ -239,7 +237,7 @@ Row {.tabset}
 # create table with filters
 output$populationTable = DT::renderDT(demographics_wide,
              filter = "top",
-             options = list(pageLength = 5, autoWidth = TRUE)
+             options = list(pageLength = 25, autoWidth = TRUE)
         )
 
 
@@ -415,28 +413,52 @@ output$normal_range_slider <- renderUI({
 
 
 measurements_heatmap <- reactive({
-  measurements %>%
+  # measurements %>%
+  #   dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
+  #   dplyr::filter(MEASUREMENT_NAME == input$heatMapVariable) %>%
+  #   ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get(input$heatmapBaseline), unit="days"))) +
+  #     geom_tile(aes(colour=as.numeric(MEASUREMENT_VALUE))) +
+  #     geom_hline(yintercept=0, color="black") +
+  #     coord_flip() +
+  #     labs(title = paste0(input$heatMapVariable ," versus ", input$heatmapBaseline), x="Subject ID", y =paste0("Days since ", input$heatmapBaseline) , colour = input$heatMapVariable) +
+  #     guides(alpha="none") +
+  #     binned_scale(aesthetics = "color",
+  #                scale_name = "stepsn", 
+  #                palette = function(x) {pal},
+  #                breaks = c( 0,input$normal_range[1], input$normal_range[2]),
+  #                show.limits = TRUE, 
+  #                guide = "colorsteps"
+  #   ) +
+  #   facet_grid( get(input$heatmapStratifier) ~., scales="free_y", space = "free_y") +
+  #   theme(plot.title = element_text(size=12, face="bold", hjust=0.5),
+  #         axis.text.y=element_blank(),
+  #         panel.border = element_rect(color = "black", fill = NA, size = 0.5),
+  #         strip.background = element_rect(color = "black", size = 0.5),
+  #         strip.text.y =  element_text(angle=0))
+  
+  ## daily means instead... 
+  dailyMean_measurements %>%
     dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
-    dplyr::filter(MEASUREMENT_NAME == input$heatMapVariable) %>%
-    ggplot(aes(x=SUBJECT_ID, y=difftime(MEASUREMENT_DATETIME, get(input$heatmapBaseline), unit="days"))) +
-      geom_tile(aes(colour=as.numeric(MEASUREMENT_VALUE))) +
+    ggplot(aes(x=SUBJECT_ID, y=difftime(get("DATE"), get(input$heatmapBaseline), unit="days"))) +
+      geom_tile(aes(alpha=0.5, color="black", fill=as.numeric(get(input$heatMapVariable)))) +
       geom_hline(yintercept=0, color="black") +
       coord_flip() +
-      labs(title = paste0(input$heatMapVariable ," versus ", input$heatmapBaseline), x="Subject ID", y =paste0("Days since ", input$heatmapBaseline) , colour = input$heatMapVariable) +
-      guides(alpha="none") +
-      binned_scale(aesthetics = "color",
+      labs(title = paste0(input$heatMapVariable ," versus ", input$heatmapBaseline), x="Subject ID", y =paste0("Days since ", input$heatmapBaseline) , fill = input$heatMapVariable) +
+      guides(alpha="none", color="none") +
+      binned_scale(aesthetics = "fill",
                  scale_name = "stepsn", 
                  palette = function(x) {pal},
                  breaks = c( 0,input$normal_range[1], input$normal_range[2]),
                  show.limits = TRUE, 
                  guide = "colorsteps"
     ) +
-    facet_grid( get(input$heatmapStratifier) ~., scales="free_y", space = "free_y") +
-    theme(plot.title = element_text(size=12, face="bold", hjust=0.5),
+      facet_grid( get(input$heatmapStratifier) ~., scales="free_y", space = "free_y") +
+      theme(plot.title = element_text(size=12, face="bold", hjust=0.5),
           axis.text.y=element_blank(),
           panel.border = element_rect(color = "black", fill = NA, size = 0.5),
           strip.background = element_rect(color = "black", size = 0.5),
           strip.text.y =  element_text(angle=0))
+  
 })
   
 output$heatmap_plot <- renderPlot({
