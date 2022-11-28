@@ -209,7 +209,7 @@ measurements <- merge(x=demographics_wide, by.x="SUBJECT_ID", all.x=FALSE, y=mea
 
 ```
 
-```{r calculate daily mean measurements}
+```{r calculate daily mean measurements, message=FALSE}
 ## calculate daily mean values for all numeric variables
 dailyMean_measurements <- measurements %>%
     dplyr::filter(VARIABLE_TYPE == "NUMERIC") %>%
@@ -337,20 +337,60 @@ fillCol(height = 600, flex = c(NA, 1),
 ```{r time to event plot}
 ## static examples...
 
-# plot(ecdf(demographics_wide[,"ITU"]), cex=0)
+# demographics_wide %>%
+#     dplyr::mutate(day = round(difftime(time2 = get("ADMISSION"), time1 = get("DIED"), unit="days"), digits = 0)) %>%
+#     ggplot(aes(x=day, group=get("GENDER"), color=get("GENDER"))) +
+#     stat_ecdf(geom = "step") +
+#     scale_color_manual(values = dECMTpalette) +
+#     labs(title = "title", x="Days since admission", y="proportion", fill = "GENDER", color = "GENDER") +
+#     expand_limits(x=0)
 
-# ggplot(demographics_wide, aes(x=ITU)) +
-#     stat_ecdf(geom = "step")
+## get cumulative proportion per group vs days since baseline 
+# demographics_wide %>%
+#     group_by(get("GENDER")) %>%
+#     mutate(day = round(difftime(time2 = get("ADMISSION"), time1 = get("DISCHARGED"), unit="days"), digits = 0)) %>%
+#     arrange(day) %>%
+#     mutate(discharges = cumsum(!is.na(DISCHARGED))) %>%
+#     mutate(group_total = length(unique(SUBJECT_ID))) %>%
+#     mutate(cum_prop = round(discharges/group_total, digits = 3)) %>%
+#     ggplot(aes(x=day, y=cum_prop, color=GENDER)) +
+#         geom_step() +
+#         expand_limits(x=0, y=c(0,1)) +
+#         scale_color_manual(values = dECMTpalette) +
+#         labs(title = "title", x="Days since ADMISSION", y="Proportion with DISCHARGE event", fill = "GENDER", color = "GENDER")  
+    
+reactiveTTEPlot <- reactive({
+  demographics_wide %>%
+    dplyr::filter(SUBJECT_ID %in% selected_patients()) %>%
+    dplyr::group_by(get(input$TTEplotStratifier)) %>%
+    mutate(day = round(difftime(time2 = get(input$TTEplotFrom), time1 = get(input$TTEplotTo), unit="days"), digits = 0)) %>%
+    arrange(day) %>%
+    mutate(event_count = cumsum(!is.na(get(input$TTEplotTo)))) %>%
+    mutate(group_total = length(unique(SUBJECT_ID))) %>%
+    mutate(cum_prop = round(event_count/group_total, digits = 3)) %>%
+    ggplot(aes(x=day, y=cum_prop, color=get(input$TTEplotStratifier))) +
+        geom_step() +
+        expand_limits(x=0, y=c(0,1)) +
+        scale_color_manual(values = dECMTpalette) +
+        labs(title = paste0("Time from ", input$TTEplotFrom, " to ", input$TTEplotTo, " events according to ", input$TTEplotStratifier), x=paste0("Days since", input$TTEplotFrom), y="Cumulative proportion with event", color = input$TTEplotStratifier)
+        # labs(title = "title", x="Days since (baseline)", y="Proportion with () event", fill = "GENDER", color = "GENDER") 
+   
+})
 
-demographics_wide %>%
-    dplyr::mutate(day = round(difftime(time2 = get("ADMISSION"), time1 = get("DIED"), unit="days"), digits = 0)) %>%
-    ggplot(aes(x=day, group=get("GENDER"), color=get("GENDER"))) +
-    stat_ecdf(geom = "step") +
-    scale_color_manual(values = dECMTpalette) +
-    labs(title = "title", x="Days since admission", y="proportion", fill = "GENDER", color = "GENDER") +
-    expand_limits(x=0)
+output$ttePlot <- renderPlot({
+  reactiveTTEPlot()
+})
 
-
+## display on page
+fillCol(height = 600, flex = c(NA, 1),
+  inputPanel(
+    selectInput(inputId = "TTEplotFrom", label="From:", choices = event_names, selected = event_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    selectInput(inputId = "TTEplotTo", label="To:", choices = event_names, selected = event_names[2], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL),
+    
+    selectInput(inputId = "TTEplotStratifier", label="Select stratifier:", choices = stratifier_names, selected = stratifier_names[1], multiple = FALSE,  selectize = TRUE, width = NULL, size = NULL)
+    ),  
+  plotOutput("ttePlot", height = "100%")
+)
 ```
 
 
