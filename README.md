@@ -9,6 +9,6 @@
  2. Events table named EVENTS.csv, tall format, with headers: SUBJECT_ID, EVENT_NAME, EVENT_DATETIME   
  3. Measurements table named MEASUREMENTS.csv, tall format, with headers: SUBJECT_ID, MEASUREMENT_NAME, MEASUREMENT_DATETIME, MEASUREMENT_VALUE, UNIT  
 
-Datetime values must have the format: YYYY-MM-DD HH:MM:SS
+Datetime values must have the format: YYYY-MM-DD HH:MM:SS (24h format)
 
 Synthetic data for 100 patients, plus the script used to generate the synthetic data, are included.  
