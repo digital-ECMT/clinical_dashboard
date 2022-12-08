@@ -205,6 +205,9 @@ for(i in 1:length(subject_ids)) {
   subject_id <- subject_ids[i]
   # get gender
   gender <- demographics_synth$VARIABLE_VALUE[demographics_synth$SUBJECT_ID==subject_id & demographics_synth$VARIABLE_NAME == "GENDER" ]
+  cancer_type <- demographics_synth$VARIABLE_VALUE[demographics_synth$SUBJECT_ID==subject_id & demographics_synth$VARIABLE_NAME == "CANCER TYPE" ]
+  treatment_start <- lubridate::as_datetime(events_synth$EVENT_DATETIME[events_synth$SUBJECT_ID == subject_id & events_synth$EVENT_NAME == "TREATMENT_START"])
+
   # get datetime of first event for this patient
   earliest_datetime <- min(lubridate::as_datetime(events_synth$EVENT_DATETIME[events_synth$SUBJECT_ID == subject_id]))
   # get datetime of last event for this patient
@@ -220,6 +223,24 @@ for(i in 1:length(subject_ids)) {
   inpatient_dates <- seq(from = earliest_datetime,to = latest_datetime,by = "day")
   for(j in 1:length(inpatient_dates)) {
     datetime <- inpatient_dates[j]
+    # create measurements
+    measurement <- "CEA"
+    # specify unit
+    unit <- "ug/L"
+    # generate a random positive value
+    value <- abs(rnorm(n=1, mean = 8+j, sd = 1))
+    # skew pancreatic cancer higher
+    if(cancer_type == "PANCREAS") {value <- value * 3}
+    value <- round(value, digits = 1)
+    measurements_synth <- measurements_synth %>%
+      add_row(
+        SUBJECT_ID = subject_id, 
+        MEASUREMENT_NAME = measurement, 
+        MEASUREMENT_DATETIME = as.character(datetime),
+        MEASUREMENT_VALUE = as.character(value), 
+        UNIT = unit
+      )
+    
     # create measurements
     measurement <- "UREA"
     # specify unit
@@ -245,6 +266,9 @@ for(i in 1:length(subject_ids)) {
     value <- rnorm(n=1, mean = 45+j, sd = 10)
     if(final_event == "DIED") { value <- value * rnorm(n=1, mean = 1.5, sd=0.1)}
     if(gender == "MALE") {value <- value * rnorm(n=1, mean = 1.5, sd=0.1)}
+    
+    if(datetime > treatment_start &  final_event == "DISCHARGED") { value <- value - 10}
+    
     value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
