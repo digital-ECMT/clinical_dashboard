@@ -191,6 +191,30 @@ for(i in 1:length(subject_ids)) {
 
 ```
 
+```{r define measurement ranges}
+
+normal_urea <- round(abs(rnorm(n=100, mean = 5, sd = 2)), digits = 1)
+high_urea <- round(rnorm(n=100, mean = 12, sd = 2), digits = 1)
+
+normal_crp <- round(abs(rnorm(n=100, mean = 3, sd = 2)), digits = 1)
+high_crp <- round(rnorm(n=100, mean = 150, sd = 20), digits = 1)
+
+normal_cea <- round(abs(rnorm(n=100, mean = 1, sd = 1)), digits = 1)
+high_cea <- round(abs(rnorm(n=100, mean = 4, sd = 1)), digits = 1)
+
+normal_hr <- round(abs(rnorm(n=100, mean = 70, sd = 5)), digits = 1)
+high_hr <- round(abs(rnorm(n=100, mean = 90, sd = 5)), digits = 1)
+
+normal_systolic <- round(abs(rnorm(n=100, mean = 80, sd = 5)), digits = 1)
+low_systolic <- round(abs(rnorm(n=100, mean = 55, sd = 5)), digits = 1)
+
+normal_diastolic <- round(abs(rnorm(n=100, mean = 120, sd = 5)), digits = 1)
+low_diastolic <- round(abs(rnorm(n=100, mean = 105, sd = 5)), digits = 1)
+```
+
+
+
+
 ```{r synthetic measurements}
 measurements_synth <- data.frame(SUBJECT_ID = character(0),
                            MEASUREMENT_NAME = character(0),
@@ -228,9 +252,14 @@ for(i in 1:length(subject_ids)) {
     # specify unit
     unit <- "ug/L"
     # generate a random positive value
-    value <- abs(rnorm(n=1, mean = 8+j, sd = 1))
+    #value <- abs(rnorm(n=1, mean = 8+j, sd = 1))
+    if(datetime > treatment_start) {
+      value <- sample(normal_cea, size=1)
+    } else {
+      value <- sample(high_cea, size=1)
+    }
     # skew pancreatic cancer higher
-    if(cancer_type == "PANCREAS") {value <- value * 3}
+    if(cancer_type == "PANCREAS") {value <- value * 1.1}
     value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
@@ -246,9 +275,13 @@ for(i in 1:length(subject_ids)) {
     # specify unit
     unit <- "mmol/L"
     # generate a value
-    value <- rnorm(n=1, mean = 8+j, sd = 1)
-    if(final_event == "DIED") { value <- value * rnorm(n=1, mean = 1.5, sd=0.1)}
-    if(gender == "MALE") {value <- value * rnorm(n=1, mean = 1.5, sd=0.1)}
+    # value <- rnorm(n=1, mean = 8+j, sd = 1)
+    if(datetime > treatment_start) {
+      value <- sample(normal_urea, size=1)
+    } else {
+      value <- sample(high_urea, size=1)
+    }
+    if(gender == "MALE") {value <- value * 1.1}
     value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
@@ -263,12 +296,15 @@ for(i in 1:length(subject_ids)) {
     # specify unit
     unit <- "mmol/L"
     # generate a value
-    value <- rnorm(n=1, mean = 45+j, sd = 10)
-    if(final_event == "DIED") { value <- value * rnorm(n=1, mean = 1.5, sd=0.1)}
-    if(gender == "MALE") {value <- value * rnorm(n=1, mean = 1.5, sd=0.1)}
-    
-    if(datetime > treatment_start &  final_event == "DISCHARGED") { value <- value - 10}
-    
+    # value <- rnorm(n=1, mean = 45+j, sd = 10)
+    if(datetime > treatment_start) {
+      value <- sample(normal_crp, size=1)
+    } else {
+      value <- sample(high_crp, size=1)
+    }
+    if(final_event == "DIED") { value <- value * 1.1}
+    if(gender == "MALE") {value <- value * 1.1}
+  
     value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
@@ -284,8 +320,13 @@ for(i in 1:length(subject_ids)) {
     unit <- "bpm"
     # generate a value
     value <- rnorm(n=1, mean = 70-j, sd = 10)
-    if(final_event == "DIED") { value <- value * rnorm(n=1, mean = 0.85, sd=0.1)}
-    if(gender == "MALE") {value <- value * rnorm(n=1, mean = 0.85, sd=0.1)}
+    if(datetime > treatment_start) {
+      value <- sample(normal_hr, size=1)
+    } else {
+      value <- sample(high_hr, size=1)
+    }
+    if(final_event == "DIED") { value <- value * 1.1}
+    if(gender == "MALE") {value <- value * 1.1}
     value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
@@ -300,8 +341,13 @@ for(i in 1:length(subject_ids)) {
     # specify unit
     unit <- "mm Hg"
     # generate a value
-    value <- rnorm(n=1, mean = 120-j, sd = 10)
-    if(final_event == "DIED") { value <- value * 1.5}
+    #value <- rnorm(n=1, mean = 120-j, sd = 10)
+    if(datetime > treatment_start) {
+      value <- sample(normal_systolic, size=1)
+    } else {
+      value <- sample(low_systolic, size=1)
+    }
+    if(final_event == "DIED") { value <- value * 0.9}
     value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
       add_row(
@@ -316,7 +362,12 @@ for(i in 1:length(subject_ids)) {
     # specify unit
     unit <- "mm Hg"
     # generate a value
-    value <- rnorm(n=1, mean = 80, sd = 10)
+    # value <- rnorm(n=1, mean = 80, sd = 10)
+    if(datetime > treatment_start) {
+      value <- sample(normal_diastolic, size=1)
+    } else {
+      value <- sample(low_diastolic, size=1)
+    }
     if(final_event == "DIED") { value <- value * 0.75}
     value <- round(value, digits = 1)
     measurements_synth <- measurements_synth %>%
